@@ -1,0 +1,8 @@
+/Library/
+/Temp/
+/Obj/
+/Build/
+/Logs/
+/UserSettings/
+/Output/
+*.apk
