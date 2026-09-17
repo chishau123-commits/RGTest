@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/RhythmDemo/Scenes/GeometryRhythmDemo.unity
+    guid: 510130eef83a0344bb91822227c7fe17
   m_configObjects: {}

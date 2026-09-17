@@ -6,3 +6,5 @@
 /UserSettings/
 /Output/
 *.apk
+/.validation/
+/Builds/
