@@ -16,4 +16,4 @@ The five canonical triage roles, each label string equal to its name. See `Docs/
 
 Single-context: one `CONTEXT.md` and `Docs/adr/` at the repo root, both created lazily. See `Docs/agents/domain.md`.
 
-> 本仓库在 Windows 上开发，git 索引里文档目录记为 `Docs/`（大写 D）。新建 `docs/...` 会被 git 归一到 `Docs/...`，所以上面的路径一律用 `Docs/`。
+> 文档目录在版本库中记为 `Docs/`（大写 D）。引用上述路径时请保持这个大小写，避免出现两个只差大小写的目录。
