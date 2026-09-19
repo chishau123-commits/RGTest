@@ -9,8 +9,8 @@
 1. 等待 Unity 导入 `Assets/RhythmDemo` 并完成编译。
 2. 打开 `Assets/RhythmDemo/Scenes/GeometryRhythmDemo.unity`。也可通过菜单 **Geometry Rhythm → Open Demo Scene** 打开。
 3. Game 视图分辨率菜单取消 **Low Resolution Aspect Ratios**，选择 **Full HD (1920×1080)**。不要只选宽高比并打开低分辨率预览。
-4. 按 Play 先进入标题页，点击 **ENTER MUSIC ARCHIVE** 打开真实 JSON 歌曲列表。
-5. **PLAY CHART** 开始手动游玩，**AUTOPLAY / PREVIEW** 开始自动演示；歌曲结束自动进入结算。游玩时右下角模式按钮仍可切换模式并重开。
+4. 按 Play 先进入标题页，点击 **TAP TO START** 打开真实 JSON 选曲页；多首歌时左右滑动封面切换。
+5. **PLAY** 开始手动游玩，**PREVIEW** 开始自动演示；歌曲结束自动进入结算。模式、声音、重开与返回选曲统一放入左上暂停按钮打开的面板。
 
 三页 UI、页面流程、游戏改名、新曲接入和结算规则见 [前端 UI 说明](FrontendUI.md)。
 
@@ -18,16 +18,16 @@
 
 ### Windows 可执行版本
 
-运行 `Builds/GeometryRhythmDemo/GeometryRhythmDemo.exe`。发布给别人时需一起拷贝整个目录，不能只拷贝 exe。
+运行 `Builds/GeometryRhythmDemo/GeometryRhythmDemo.exe`。复制给别人时需一起拷贝整个目录，不能只拷贝 exe。这是桌面测试播放器，游戏 UI 已按横屏移动端触控设计；尚未生成 Android／iOS 安装包。键盘快捷键仅用于编辑器／桌面调试，不显示在玩家 UI 中。
 
 | 操作 | 功能 |
 | --- | --- |
 | 鼠标左键／触屏按下 | Tap；同时也可作为 Drag 接触的开始 |
 | 按住鼠标并移动／保持手指接触 | Drag |
 | 左上暂停按钮／Space／Esc | 暂停、继续 |
-| A／右下模式按钮 | 切换自动演示与手动游玩，并重开 |
-| R／RESTART | 从头开始 |
-| M／SOUND ON/OFF | 静音开关 |
+| 暂停面板 MODE／调试键 A | 切换自动演示与手动游玩，并重开 |
+| 暂停面板 RETRY／调试键 R | 从头开始 |
+| 暂停面板 SOUND ON/OFF／调试键 M | 静音开关 |
 | 左／右方向键 | 向后／前跳转 8 秒，开启新的练习区间 |
 
 失去窗口焦点时自动暂停，返回后需要手动继续。点击界面按钮不会触发全屏 Note。触点从 UI 上开始时，该次接触不会穿透到游戏判定。

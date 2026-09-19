@@ -9,11 +9,60 @@ namespace GeometryRhythm
     {
         public const float NearDepth = 7;
         public const float FarDepth = 100;
+        public const string CameraEaseLinear = "linear";
+        public const string CameraEaseIn = "easeIn";
+        public const string CameraEaseOut = "easeOut";
+        public const string CameraEaseInOut = "easeInOut";
+        public const string CameraEaseSmoother = "smoother";
         readonly ChartData chart;
         readonly TempoMap tempo;
         readonly StageSpline route;
+        readonly Vector3[] fixedCameraPositions;
+        readonly Quaternion[] fixedCameraRotations;
+        public bool UsesFixedCameraKeys => fixedCameraPositions != null;
+        public static bool IsCameraEasing(string value)
+            => string.IsNullOrEmpty(value) || value == CameraEaseLinear || value == CameraEaseIn ||
+                value == CameraEaseOut || value == CameraEaseInOut || value == CameraEaseSmoother;
+        public static string CameraEasing(CameraKey key)
+            => key == null || string.IsNullOrEmpty(key.easing) ? CameraEaseInOut : key.easing;
+        public static float CameraInterpolation(CameraKey key, float value)
+        {
+            float t = Mathf.Clamp01(value);
+            switch (CameraEasing(key))
+            {
+                case CameraEaseLinear: return t;
+                case CameraEaseIn: return t * t;
+                case CameraEaseOut: return 1 - (1 - t) * (1 - t);
+                case CameraEaseSmoother: return t * t * t * (t * (t * 6 - 15) + 10);
+                default: return t * t * (3 - 2 * t);
+            }
+        }
         public SpatialDirector(ChartData chart, TempoMap tempo)
-        { this.chart = chart; this.tempo = tempo; route = new StageSpline(chart.stagePath); }
+        {
+            this.chart = chart; this.tempo = tempo; route = new StageSpline(chart.stagePath);
+            // A track authored with world-space keys has fixed endpoints throughout.
+            // Resolve legacy/path keys at THEIR own times too; switching interpolation
+            // modes per pair would otherwise introduce jumps at mixed-type boundaries.
+            // Pure legacy/path tracks keep their original moving-route semantics.
+            if (chart.cameraKeys == null || !Array.Exists(chart.cameraKeys, key => key.useWorldPose)) return;
+            fixedCameraPositions = new Vector3[chart.cameraKeys.Length];
+            fixedCameraRotations = new Quaternion[chart.cameraKeys.Length];
+            for (int i = 0; i < chart.cameraKeys.Length; i++)
+            {
+                var key = chart.cameraKeys[i];
+                float distance = DistanceAtTime(tempo.SecondsAtBeat(key.beat));
+                WorldPose(key, distance, out var position, out var target);
+                Vector3 direction = target - position;
+                if (direction.sqrMagnitude < .000001f) direction = RouteRotationAt(distance) * Vector3.forward;
+                direction.Normalize();
+                // Pick an endpoint frame only once. Near-vertical (e.g. 89 degrees)
+                // still has a valid world-up frame; use a fallback only at the pole.
+                Vector3 up = Vector3.Cross(Vector3.up, direction).sqrMagnitude < .00000001f
+                    ? Vector3.forward : Vector3.up;
+                fixedCameraPositions[i] = position;
+                fixedCameraRotations[i] = Quaternion.LookRotation(direction, up);
+            }
+        }
 
         public static Vector3 Route(float distance)
             => StageSpline.LegacyPosition(distance);
@@ -21,6 +70,7 @@ namespace GeometryRhythm
             => StageSpline.LegacyRotation(distance);
         public float UnitsPerSecond => route.UnitsPerSecond;
         public float RouteLength => route.Length;
+        public float RouteControlPointDistance(int index) => route.ControlPointDistance(index);
         public float DistanceAtTime(double time) => (float)time * route.UnitsPerSecond;
         public Vector3 RouteAt(float distance) => route.Position(distance);
         public Quaternion RouteRotationAt(float distance) => route.Rotation(distance);
@@ -71,17 +121,41 @@ namespace GeometryRhythm
         }
         public Vector3 Point(string id, float depth, double time)
         {
+            float s = DistanceAtTime(time) + depth;
+            var path = Array.Find(chart.paths, p => p.id == id);
+            if (path != null && path.offsetKeys != null && path.offsetKeys.Length > 0)
+            {
+                Vector2 offset = OffsetAtDistance(id, s);
+                return RoutePoint(s, offset.x, offset.y);
+            }
             var current = Placement(id, time, out var previous, out float blend);
             float q = Mathf.Clamp01((depth - NearDepth) / (FarDepth - NearDepth));
             float x = Mathf.Lerp(previous.x, current.x, blend);
             float y = Mathf.Lerp(previous.y, current.y, blend);
             float bend = Mathf.Lerp(previous.bend, current.bend, blend);
             float lift = Mathf.Lerp(previous.lift, current.lift, blend);
-            float s = DistanceAtTime(time) + depth;
             Vector3 local = new Vector3(x * (1 - q * .6f) + Mathf.Sin(q * Mathf.PI * 1.35f) * bend,
                 y * (1 - q * .4f) + Mathf.Sin(q * Mathf.PI) * lift, 0);
             return RouteAt(s) + RouteRotationAt(s) * local;
         }
+        public Vector2 OffsetAtDistance(string id, float distance)
+        {
+            var path = Array.Find(chart.paths, p => p.id == id);
+            var keys = path == null ? null : path.offsetKeys;
+            double time = Math.Max(0, (distance - NearDepth) / UnitsPerSecond);
+            if (keys == null || keys.Length == 0)
+            {
+                var current = Placement(id, time, out var previous, out float blend);
+                return Vector2.Lerp(new Vector2(previous.x, previous.y), new Vector2(current.x, current.y), blend);
+            }
+            int index = 0;
+            while (index + 1 < keys.Length && OffsetDistance(keys[index + 1].tick) <= distance) index++;
+            var a = keys[index]; var b = keys[Math.Min(index + 1, keys.Length - 1)];
+            float mix = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(OffsetDistance(a.tick), OffsetDistance(b.tick), distance));
+            return Vector2.Lerp(new Vector2(a.x, a.y), new Vector2(b.x, b.y), mix);
+        }
+        public float OffsetDistance(int tick)
+            => DistanceAtTime(tempo.SecondsAtBeat(tick / (double)chart.ticksPerBeat)) + NearDepth;
         public float Depth(double hitTime, double time)
         {
             float q = (float)((hitTime - time) / chart.approachSeconds);
@@ -106,7 +180,17 @@ namespace GeometryRhythm
             while (index + 1 < chart.cameraKeys.Length && chart.cameraKeys[index + 1].beat <= beat) index++;
             var a = chart.cameraKeys[index];
             var b = chart.cameraKeys[Math.Min(index + 1, chart.cameraKeys.Length - 1)];
-            float q = Mathf.SmoothStep(0, 1, Mathf.InverseLerp(a.beat, b.beat, beat));
+            float q = CameraInterpolation(a, Mathf.InverseLerp(a.beat, b.beat, beat));
+            if (UsesFixedCameraKeys)
+            {
+                int next = Math.Min(index + 1, fixedCameraPositions.Length - 1);
+                camera.transform.SetPositionAndRotation(
+                    Vector3.Lerp(fixedCameraPositions[index], fixedCameraPositions[next], q),
+                    Quaternion.Slerp(fixedCameraRotations[index], fixedCameraRotations[next], q)
+                        * Quaternion.Euler(0, 0, Mathf.Lerp(a.roll, b.roll, q)));
+                camera.fieldOfView = Mathf.Lerp(a.fov, b.fov, q);
+                return;
+            }
             float orbit = Mathf.Lerp(a.orbit, b.orbit, q);
             float distance = Mathf.Lerp(a.distance, b.distance, q);
             float height = Mathf.Lerp(a.height, b.height, q);
@@ -126,9 +210,25 @@ namespace GeometryRhythm
                 Vector3 offset = Quaternion.Euler(0, orbit, 0) * new Vector3(0, height, -distance);
                 camera.transform.position = target + frame * offset;
             }
-            camera.transform.rotation = Quaternion.LookRotation(target - camera.transform.position, Vector3.up)
+            Vector3 direction = target - camera.transform.position;
+            if (direction.sqrMagnitude < .000001f) direction = RouteRotationAt(s) * Vector3.forward;
+            Vector3 up = Mathf.Abs(Vector3.Dot(direction.normalized, Vector3.up)) > .999f ? Vector3.forward : Vector3.up;
+            camera.transform.rotation = Quaternion.LookRotation(direction, up)
                 * Quaternion.Euler(0, 0, Mathf.Lerp(a.roll, b.roll, q));
             camera.fieldOfView = Mathf.Lerp(a.fov, b.fov, q);
+        }
+        void WorldPose(CameraKey key, float distance, out Vector3 position, out Vector3 target)
+        {
+            if (key.useWorldPose) { position = key.worldPosition; target = key.worldTarget; return; }
+            if (key.usePathPose)
+            {
+                position = RoutePoint(distance + key.positionForward, key.positionX, key.positionY);
+                target = RoutePoint(distance + key.targetForward, key.targetX, key.targetY);
+                return;
+            }
+            target = RouteAt(distance + 18) + Vector3.up * 2;
+            position = target + RouteRotationAt(distance + 15) *
+                (Quaternion.Euler(0, key.orbit, 0) * new Vector3(0, key.height, -key.distance));
         }
         static void PoseValues(CameraKey key, out float pf, out float px, out float py,
             out float tf, out float tx, out float ty)

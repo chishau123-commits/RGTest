@@ -65,20 +65,36 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\RhythmDemo\Runtime\MenuArtwork.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorWorkspaceChecks.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorCameraTweenChecks.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorTimeline.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\ChartData.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\StageSpline.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\CyberFrameGraphic.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\RhythmFrontendView.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorWorkspaceUI.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorPlaybackChecks.cs" />
+    <Compile Include="Assets\RhythmDemo\Runtime\MobileUiLayout.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\SpatialDirector.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorCameraCurves.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\JudgementEngine.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\CyberTheme.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\SceneVisuals.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorNoteChecks.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\RhythmFrontend.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorVisualAuthoringChecks.cs" />
     <Compile Include="Assets\Scripts\test.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorVisualLibraries.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\SongClock.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorTimelineChecks.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\CyberPanelGraphic.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorInteraction.cs" />
+    <Compile Include="Assets\RhythmDemo\Runtime\PagedSongCarousel.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorInteractionChecks.cs" />
+    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorPlayback.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\RuntimeChartEditorController.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\RhythmDemoController.cs" />
+    <Compile Include="Assets\RhythmDemo\Runtime\VisualAuthoringRuntime.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\DemoHud.cs" />
   </ItemGroup>
   <ItemGroup>

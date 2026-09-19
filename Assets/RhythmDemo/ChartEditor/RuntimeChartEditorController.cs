@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace GeometryRhythm.ChartEditor
 {
-    public enum ChartEditMode { Stage, Camera, Paths, Notes, Map }
+    public enum ChartEditMode { Scene, Stage, Paths, Notes, Camera, Effects, CameraMotion, Map }
 
     public sealed class ChartEditorHandle : MonoBehaviour
     {
@@ -19,15 +19,17 @@ namespace GeometryRhythm.ChartEditor
     /// Standalone desktop chart-authoring MVP. It deliberately uses runtime APIs only: the
     /// same scene can run in the editor or be shipped as a Windows application.
     /// </summary>
-    public sealed class RuntimeChartEditorController : MonoBehaviour
+    public sealed partial class RuntimeChartEditorController : MonoBehaviour
     {
-        const float PanelWidth = 330;
         const float ToolbarHeight = 48;
-        const float TimelineHeight = 104;
+        const float MinimumPanelWidth = 250;
+        const float MaximumPanelWidth = 520;
+        const float SceneDetailWidth = 350;
         readonly Stack<string> undo = new Stack<string>();
         readonly Stack<string> redo = new Stack<string>();
         readonly List<Material> ownedMaterials = new List<Material>();
         readonly List<Texture2D> ownedTextures = new List<Texture2D>();
+        readonly Dictionary<string, string> numericEdits = new Dictionary<string, string>();
 
         ChartData chart;
         TempoMap tempo;
@@ -35,6 +37,7 @@ namespace GeometryRhythm.ChartEditor
         Camera sceneCamera;
         Camera evaluatorCamera;
         Transform cameraTargetMarker;
+        Transform[] pathPlacementHandles;
         AudioSource audioSource;
         AudioClip generatedAudio;
         Transform visualRoot;
@@ -42,6 +45,7 @@ namespace GeometryRhythm.ChartEditor
         Material mapA, mapB, noteMaterial;
         GUIStyle titleStyle, smallStyle, statusStyle, buttonStyle, selectedButtonStyle;
         GUIStyle panelStyle, fieldStyle, toolbarStyle, headingStyle;
+        GUIStyle modeButtonStyle, selectedModeButtonStyle;
 
         ChartEditMode mode;
         int selectedStagePoint;
@@ -57,8 +61,9 @@ namespace GeometryRhythm.ChartEditor
         bool showSettings;
         bool showGuide;
         bool draggingHandle;
-        ChartEditorHandle activeHandle;
-        Plane dragPlane;
+        bool inspectorResizing;
+        float panelWidth = 330;
+        float inspectorResizeStartX, inspectorResizeStartWidth;
         double songTime;
         float orbitYaw = 22;
         float orbitPitch = 18;
@@ -75,11 +80,16 @@ namespace GeometryRhythm.ChartEditor
         float CurrentBeat => tempo == null ? 0 : (float)tempo.BeatAtSeconds(songTime);
         float ViewWidth => Screen.width / uiScale;
         float ViewHeight => Screen.height / uiScale;
+        float PanelWidth => panelWidth;
+        bool SceneDetailVisible => !chartCameraPreview && mode == ChartEditMode.Scene &&
+            selectedSceneObject >= 0 && chart != null && chart.sceneObjects != null && selectedSceneObject < chart.sceneObjects.Length;
+        float RightPanelWidth => SceneDetailVisible ? Mathf.Min(SceneDetailWidth, Mathf.Max(260, ViewWidth - PanelWidth - 280)) : 0;
+        float ViewportRight => ViewWidth - RightPanelWidth;
         bool PointerInViewport(Vector2 p)
         {
-            if (showSettings || showGuide) return false;
+            if (WorkspaceInputBlocked || chartCameraPreview) return false;
             p /= uiScale;
-            return p.x > PanelWidth && p.y > ToolbarHeight && p.y < ViewHeight - TimelineHeight;
+            return p.x > PanelWidth && p.x < ViewportRight && p.y > ToolbarHeight && p.y < ViewHeight - TimelineHeight;
         }
 
         void Awake()
@@ -90,6 +100,8 @@ namespace GeometryRhythm.ChartEditor
             Application.targetFrameRate = 120;
             QualitySettings.vSyncCount = 0;
             uiScale = Mathf.Clamp(PlayerPrefs.GetFloat("ChartStudio.UiScale", 1.25f), 1, 1.75f);
+            timelineHeight = PlayerPrefs.GetFloat("ChartStudio.TimelineHeight", 310);
+            panelWidth = Mathf.Clamp(PlayerPrefs.GetFloat("ChartStudio.PanelWidth", 330), MinimumPanelWidth, MaximumPanelWidth);
             filePath = Path.Combine(Application.persistentDataPath, "geometry-chart-draft.json");
             string[] args = Environment.GetCommandLineArgs();
             int fileArgument = Array.IndexOf(args, "-chart");
@@ -161,6 +173,9 @@ namespace GeometryRhythm.ChartEditor
 
         void NewChart()
         {
+            if (chartCameraPreview) ToggleCameraPreview();
+            if (audioSource != null) SetPlaying(false);
+            CancelTimelineGesture(); timelineStart = 0; timelineZoom = 1;
             chart = new ChartData
             {
                 version = 1,
@@ -194,11 +209,15 @@ namespace GeometryRhythm.ChartEditor
                     }}
                 },
                 cameraKeys = new[] { new CameraKey { beat = 0, distance = 25, height = 6, fov = 53 } },
-                notes = new NoteData[0]
+                notes = new NoteData[0],
+                sceneObjects = new SceneObjectData[0],
+                effectClips = new EffectClipData[0],
+                cameraMotionClips = new CameraMotionClipData[0]
             };
             selectedStagePoint = selectedCameraKey = selectedPath = selectedSection = 0;
-            selectedNote = -1; songTime = 0; undo.Clear(); redo.Clear();
-            SetupAudio(); Rebuild("New chart created");
+            selectedNote = selectedSceneObject = selectedEffectClip = selectedMotionClip = -1; songTime = 0; undo.Clear(); redo.Clear();
+            Rebuild("New chart created"); SetupAudio();
+            savedChartJson = JsonUtility.ToJson(chart); needsSaveAs = true;
         }
         static StagePointData StagePoint(float x, float y, float z)
             => new StagePointData { x = x, y = y, z = z };
@@ -221,10 +240,17 @@ namespace GeometryRhythm.ChartEditor
                 chart.sections = new[] { new SectionData { startBeat = 0, name = "SECTION", placements = new[] { Placement(chart.paths[0].id, 0) } } };
             if (chart.cameraKeys == null || chart.cameraKeys.Length == 0) chart.cameraKeys = new[] { new CameraKey { beat = 0, distance = 25, height = 6, fov = 53 } };
             if (chart.notes == null) chart.notes = new NoteData[0];
+            if (chart.sceneObjects == null) chart.sceneObjects = new SceneObjectData[0];
+            if (chart.effectClips == null) chart.effectClips = new EffectClipData[0];
+            if (chart.cameraMotionClips == null) chart.cameraMotionClips = new CameraMotionClipData[0];
             selectedStagePoint = Mathf.Clamp(selectedStagePoint, 0, chart.stagePath.points.Length - 1);
             selectedCameraKey = Mathf.Clamp(selectedCameraKey, 0, chart.cameraKeys.Length - 1);
             selectedPath = Mathf.Clamp(selectedPath, 0, chart.paths.Length - 1);
             selectedSection = Mathf.Clamp(selectedSection, 0, chart.sections.Length - 1);
+            selectedNote = Mathf.Clamp(selectedNote, -1, chart.notes.Length - 1);
+            selectedSceneObject = Mathf.Clamp(selectedSceneObject, -1, chart.sceneObjects.Length - 1);
+            selectedEffectClip = Mathf.Clamp(selectedEffectClip, -1, chart.effectClips.Length - 1);
+            selectedMotionClip = Mathf.Clamp(selectedMotionClip, -1, chart.cameraMotionClips.Length - 1);
         }
 
         void SetupAudio()
@@ -236,6 +262,7 @@ namespace GeometryRhythm.ChartEditor
             audioSource.clip = generatedAudio;
             audioSource.playOnAwake = false;
             audioSource.volume = .4f;
+            BuildTimelineWaveform();
         }
 
         void Rebuild(string message = null)
@@ -250,15 +277,27 @@ namespace GeometryRhythm.ChartEditor
 
         void RebuildVisuals()
         {
+            timelineCurveRevision++;
+            authoredVisuals?.Dispose(); authoredVisuals = null;
             if (visualRoot != null) { visualRoot.gameObject.SetActive(false); Destroy(visualRoot.gameObject); }
             visualRoot = new GameObject("Chart editor visuals").transform;
             visualRoot.SetParent(transform, false);
+            cameraTargetMarker = null;
+            pathPlacementHandles = null;
+            editorLivePaths = null; editorPlayheadLine = null; editorPlayheadVerticalLine = null;
+            if (chartCameraPreview)
+            {
+                if (showMap) BuildMap();
+                RefreshPreviewVisuals(); BuildAuthoredVisuals(); return;
+            }
             BuildRoute();
             BuildStageHandles();
             BuildCameraPath();
             BuildNotePaths();
             BuildNotes();
+            BuildEditorPlaybackVisuals();
             if (showMap) BuildMap();
+            BuildAuthoredVisuals();
         }
 
         LineRenderer Line(string name, Material material, float width, Vector3[] points)
@@ -309,7 +348,7 @@ namespace GeometryRhythm.ChartEditor
                 double time = tempo.SecondsAtBeat(end * i / (count - 1f));
                 spatial.EvaluateCamera(evaluatorCamera, time); points[i] = evaluatorCamera.transform.position;
             }
-            Line("Camera path", cameraMaterial, .12f, points);
+            Line("Camera path", cameraMaterial, .045f, points);
             for (int i = 0; i < chart.cameraKeys.Length; i++)
             {
                 spatial.EvaluateCamera(evaluatorCamera, tempo.SecondsAtBeat(chart.cameraKeys[i].beat));
@@ -320,8 +359,8 @@ namespace GeometryRhythm.ChartEditor
             if (mode == ChartEditMode.Camera)
             {
                 var target = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                target.name = "Camera look target"; target.transform.SetParent(visualRoot, false);
-                target.transform.position = orbitPivot; target.transform.localScale = Vector3.one * .72f;
+                target.name = "Camera placement marker"; target.transform.SetParent(visualRoot, false);
+                target.transform.position = PlacementMarkerPosition; target.transform.localScale = Vector3.one * .72f;
                 target.GetComponent<Renderer>().sharedMaterial = selectedMaterial;
                 Destroy(target.GetComponent<Collider>()); cameraTargetMarker = target.transform;
             }
@@ -330,38 +369,73 @@ namespace GeometryRhythm.ChartEditor
         {
             for (int path = 0; path < chart.paths.Length; path++)
             {
-                const int count = 90;
+                if (chartCameraPreview && spatial.Visibility(chart.paths[path].id, songTime) <= .01f) continue;
+                int count = chartCameraPreview ? 90 : Mathf.Clamp(Mathf.CeilToInt((float)Duration * spatial.UnitsPerSecond / 2) + 1, 90, 1500);
                 var points = new Vector3[count];
                 for (int i = 0; i < count; i++)
-                    points[i] = spatial.Point(chart.paths[path].id, Mathf.Lerp(SpatialDirector.NearDepth - 2, SpatialDirector.FarDepth, i / (count - 1f)), songTime);
-                Line("Note path " + chart.paths[path].id, path == selectedPath ? selectedMaterial : pathMaterial,
-                    path == selectedPath ? .12f : .065f, points);
+                {
+                    float fraction = i / (count - 1f);
+                    points[i] = chartCameraPreview
+                        ? spatial.Point(chart.paths[path].id, Mathf.Lerp(SpatialDirector.NearDepth - 2, SpatialDirector.FarDepth, fraction), songTime)
+                        : spatial.Point(chart.paths[path].id, SpatialDirector.NearDepth, Duration * fraction);
+                }
+                Line("Note path " + chart.paths[path].id, !chartCameraPreview && path == selectedPath ? selectedMaterial : pathMaterial,
+                    !chartCameraPreview && path == selectedPath ? .12f : .065f, points);
             }
-            if (mode != ChartEditMode.Paths) return;
-            var section = chart.sections[selectedSection];
-            float distance = spatial.DistanceAtTime(tempo.SecondsAtBeat(section.startBeat)) + SpatialDirector.NearDepth;
-            for (int i = 0; i < section.placements.Length; i++)
+            if (mode != ChartEditMode.Paths || chartCameraPreview) return;
+            pathPlacementHandles = new Transform[chart.paths.Length];
+            float distance = spatial.OffsetDistance(PlayheadTick);
+            for (int i = 0; i < chart.paths.Length; i++)
             {
-                var p = section.placements[i];
-                Handle("Path placement " + p.pathId, spatial.RoutePoint(distance, p.x, p.y), .85f,
-                    ChartEditMode.Paths, i, chart.paths[selectedPath].id == p.pathId);
+                var p = chart.paths[i];
+                var offset = spatial.OffsetAtDistance(p.id, distance);
+                pathPlacementHandles[i] = Handle("Path placement " + p.id, spatial.RoutePoint(distance, offset.x, offset.y), .85f,
+                    ChartEditMode.Paths, i, selectedPath == i).transform;
             }
+        }
+        void RefreshEditorPlayheadVisuals()
+        {
+            // Update only moving overlays. The permanent paths, notes and map stay intact.
+            RefreshEditorPlaybackVisuals();
+            if (cameraTargetMarker != null) cameraTargetMarker.position = PlacementMarkerPosition;
+            if (pathPlacementHandles == null) return;
+            float distance = spatial.OffsetDistance(PlayheadTick);
+            for (int i = 0; i < pathPlacementHandles.Length; i++)
+            {
+                if (pathPlacementHandles[i] == null) continue;
+                Vector2 offset = spatial.OffsetAtDistance(chart.paths[i].id, distance);
+                pathPlacementHandles[i].position = spatial.RoutePoint(distance, offset.x, offset.y);
+            }
+        }
+        double NoteHitTime(NoteData note) => tempo.SecondsAtBeat(note.tick / (double)chart.ticksPerBeat);
+        void EditorNotePose(NoteData note, out Vector3 position, out Quaternion rotation)
+        {
+            double hit = NoteHitTime(note);
+            // The permanent authoring position is the same world-space hit position
+            // reached in Preview, evaluated at THIS note's time, never at the playhead.
+            spatial.NotePose(new RuntimeNote { Data = note, HitTime = hit }, hit, out position, out rotation);
         }
         void BuildNotes()
         {
-            double earliest = songTime - .15, latest = songTime + chart.approachSeconds;
             for (int i = 0; i < chart.notes.Length; i++)
             {
-                double hit = tempo.SecondsAtBeat(chart.notes[i].tick / (double)chart.ticksPerBeat);
-                if (hit < earliest || hit > latest) continue;
-                float depth = SpatialDirector.NearDepth + (float)((hit - songTime) / chart.approachSeconds) *
-                    (SpatialDirector.FarDepth - SpatialDirector.NearDepth);
+                double hit = NoteHitTime(chart.notes[i]);
+                if (chartCameraPreview && (hit < songTime || hit > songTime + chart.approachSeconds)) continue;
                 var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 go.name = chart.notes[i].id; go.transform.SetParent(visualRoot, false);
-                go.transform.position = spatial.Point(chart.notes[i].pathId, depth, songTime);
-                go.transform.rotation = spatial.RouteRotationAt(spatial.DistanceAtTime(songTime) + depth) * Quaternion.Euler(90, 0, 0);
+                Vector3 position; Quaternion rotation;
+                if (chartCameraPreview)
+                    spatial.NotePose(new RuntimeNote { Data = chart.notes[i], HitTime = hit }, songTime, out position, out rotation);
+                else
+                {
+                    EditorNotePose(chart.notes[i], out position, out rotation);
+                    var marker = go.AddComponent<ChartEditorHandle>(); marker.mode = ChartEditMode.Notes; marker.index = i;
+                }
+                go.transform.SetPositionAndRotation(position, rotation * Quaternion.Euler(90, 0, 0));
                 go.transform.localScale = new Vector3(.65f, .08f, .65f);
-                go.GetComponent<Renderer>().sharedMaterial = i == selectedNote ? selectedMaterial : noteMaterial;
+                go.GetComponent<Renderer>().sharedMaterial = chartCameraPreview ?
+                    (chart.notes[i].protectedNote ? selectedMaterial : chart.notes[i].action == "drag" ? pathMaterial : noteMaterial) :
+                    i == selectedNote ? selectedMaterial : noteMaterial;
                 Destroy(go.GetComponent<Collider>());
             }
         }
@@ -391,36 +465,47 @@ namespace GeometryRhythm.ChartEditor
         void Update()
         {
             if (tempo == null) return;
+            UpdateViewportRect();
+            ReadNavigationMode();
             ReadKeyboard();
+            ReadLockedSceneSelection();
             if (playing)
             {
                 songTime += Time.unscaledDeltaTime;
                 if (songTime >= Duration) { songTime = Duration; SetPlaying(false); }
-                if (audioSource != null && !audioSource.isPlaying && songTime < audioSource.clip.length) StartAudioAtCurrentTime();
-                RebuildVisuals();
+                if (playing && audioSource != null && !audioSource.isPlaying && songTime < audioSource.clip.length) StartAudioAtCurrentTime();
+                if (chartCameraPreview) RefreshPreviewVisuals(); else RefreshEditorPlayheadVisuals();
             }
-            if (chartCameraPreview) spatial.EvaluateCamera(sceneCamera, songTime);
-            else { ReadSceneNavigation(); ApplyOrbitCamera(); }
-            if (cameraTargetMarker != null) cameraTargetMarker.position = orbitPivot;
-            ReadHandles();
+            UpdateTimelineEdgeScroll(Time.unscaledDeltaTime);
+            if (chartCameraPreview) { spatial.EvaluateCamera(sceneCamera, songTime); CameraMotionEvaluator.Apply(chart, tempo, sceneCamera, songTime); }
+            else { ReadSceneNavigation(); if (!flyMode) ApplyOrbitCamera(); }
+            authoredVisuals?.Evaluate(songTime);
+            if (cameraTargetMarker != null) cameraTargetMarker.position = PlacementMarkerPosition;
         }
 
         void ReadKeyboard()
         {
+            if (textInputFocused || WorkspaceInputBlocked || Cursor.lockState == CursorLockMode.Locked || chartCameraPreview) return;
             bool control = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-            if (control && Input.GetKeyDown(KeyCode.S)) SaveFile();
             if (control && Input.GetKeyDown(KeyCode.Z)) Undo();
             if (control && Input.GetKeyDown(KeyCode.Y)) Redo();
-            if (Input.GetKeyDown(KeyCode.Space)) SetPlaying(!playing);
-            if (Input.GetKeyDown(KeyCode.Alpha1)) SetMode(ChartEditMode.Stage);
-            if (Input.GetKeyDown(KeyCode.Alpha2)) SetMode(ChartEditMode.Camera);
+            if (!flyMode && Input.GetKeyDown(KeyCode.Space)) SetPlaying(!playing);
+            if (Input.GetKeyDown(KeyCode.F)) FocusSelection();
+            if (Input.GetKeyDown(KeyCode.Alpha1)) SetMode(ChartEditMode.Scene);
+            if (Input.GetKeyDown(KeyCode.Alpha2)) SetMode(ChartEditMode.Stage);
             if (Input.GetKeyDown(KeyCode.Alpha3)) SetMode(ChartEditMode.Paths);
             if (Input.GetKeyDown(KeyCode.Alpha4)) SetMode(ChartEditMode.Notes);
-            if (Input.GetKeyDown(KeyCode.Alpha5)) SetMode(ChartEditMode.Map);
+            if (Input.GetKeyDown(KeyCode.Alpha5)) SetMode(ChartEditMode.Camera);
+            if (Input.GetKeyDown(KeyCode.Alpha6)) SetMode(ChartEditMode.Effects);
+            if (Input.GetKeyDown(KeyCode.Alpha7)) SetMode(ChartEditMode.CameraMotion);
+            if (Input.GetKeyDown(KeyCode.Alpha8)) SetMode(ChartEditMode.Map);
             if (Input.GetKeyDown(KeyCode.Delete)) DeleteSelection();
         }
         void ReadSceneNavigation()
         {
+            if (inspectorResizing || timelineResizing || timelineScrubbing || timelineDragItem != null) return;
+            if (flyMode) { ReadFlight(); return; }
+            if (draggingHandle) return;
             Vector2 mouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
             if (!PointerInViewport(mouse)) return;
             if (Input.GetMouseButton(1))
@@ -434,78 +519,90 @@ namespace GeometryRhythm.ChartEditor
                 orbitPivot -= sceneCamera.transform.right * Input.GetAxis("Mouse X") * scale * 20;
                 orbitPivot -= sceneCamera.transform.up * Input.GetAxis("Mouse Y") * scale * 20;
             }
-            orbitDistance = Mathf.Clamp(orbitDistance * Mathf.Exp(-Input.mouseScrollDelta.y * .09f), 3, 220);
         }
         void ApplyOrbitCamera()
         {
             Quaternion rotation = Quaternion.Euler(orbitPitch, orbitYaw, 0);
             sceneCamera.transform.SetPositionAndRotation(orbitPivot - rotation * Vector3.forward * orbitDistance, rotation);
         }
-        void ReadHandles()
+        void ReadHandles(Event pointerEvent)
         {
-            Vector2 guiMouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
-            if (!PointerInViewport(guiMouse)) return;
-            Ray ray = sceneCamera.ScreenPointToRay(Input.mousePosition);
-            if (Input.GetMouseButtonDown(0))
+            // Process queued pointer events rather than sampling buttons once per frame:
+            // short clicks/drags must not disappear during a costly scene rebuild.
+            if (pointerEvent.button != 0) return;
+            if (pointerEvent.type == EventType.MouseUp)
             {
-                if (Physics.Raycast(ray, out var hit, 2000) && hit.collider.TryGetComponent(out ChartEditorHandle marker))
+                if (draggingHandle) pointerEvent.Use();
+                draggingHandle = false; return;
+            }
+            if (Cursor.lockState == CursorLockMode.Locked || playing || chartCameraPreview || inspectorResizing) return;
+            Vector2 guiMouse = pointerEvent.mousePosition;
+            Ray ray = sceneCamera.ScreenPointToRay(new Vector3(guiMouse.x, Screen.height - guiMouse.y, 0));
+            if (draggingHandle && pointerEvent.type == EventType.MouseDrag)
+            {
+                UpdateGizmoDrag(ray, guiMouse); pointerEvent.Use(); return;
+            }
+            if (!PointerInViewport(guiMouse)) return;
+            if (pointerEvent.type == EventType.MouseDown)
+            {
+                clearGuiFocus = true;
+                int axis = HitGizmo(guiMouse / uiScale);
+                if (axis >= 0) { BeginGizmoDrag(axis, ray, guiMouse); pointerEvent.Use(); return; }
+                // A forgiving screen-space radius makes faraway control points selectable.
+                ChartEditorHandle marker = PickHandle(guiMouse);
+                if (marker != null)
                 {
-                    SetMode(marker.mode); SelectHandle(marker);
-                    RecordUndo(); activeHandle = marker; draggingHandle = marker.mode == ChartEditMode.Stage || marker.mode == ChartEditMode.Paths;
-                    if (marker.mode == ChartEditMode.Stage)
-                        dragPlane = new Plane(Vector3.up, marker.transform.position);
-                    else
-                    {
-                        float d = spatial.DistanceAtTime(tempo.SecondsAtBeat(chart.sections[selectedSection].startBeat)) + SpatialDirector.NearDepth;
-                        dragPlane = new Plane(spatial.RouteRotationAt(d) * Vector3.forward, spatial.RouteAt(d));
-                    }
+                    SelectHandle(marker); pointerEvent.Use();
                 }
-                else if (mode == ChartEditMode.Stage && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)))
+                else if (mode == ChartEditMode.Scene)
+                {
+                    SelectSceneObject(ray, true); pointerEvent.Use();
+                }
+                else if (mode == ChartEditMode.Stage && pointerEvent.shift)
                 {
                     Plane ground = new Plane(Vector3.up, Vector3.zero);
-                    if (ground.Raycast(ray, out float enter)) AddStagePoint(ray.GetPoint(enter));
+                    if (ground.Raycast(ray, out float enter)) { AddStagePoint(ray.GetPoint(enter)); pointerEvent.Use(); }
                 }
             }
-            if (draggingHandle && Input.GetMouseButton(0) && activeHandle != null && dragPlane.Raycast(ray, out float distance))
+        }
+        void ReadLockedSceneSelection()
+        {
+            if (mode != ChartEditMode.Scene || !flyMode || Cursor.lockState != CursorLockMode.Locked ||
+                WorkspaceInputBlocked || chartCameraPreview || playing || !Input.GetMouseButtonDown(0)) return;
+            if (SelectSceneObject(sceneCamera.ViewportPointToRay(new Vector3(.5f, .5f, 0)), false)) ReleaseMouse();
+        }
+        bool SelectSceneObject(Ray ray, bool clearWhenMiss)
+        {
+            if (authoredVisuals != null && authoredVisuals.TryPickSceneObject(ray, out SceneObjectData picked))
             {
-                Vector3 point = ray.GetPoint(distance);
-                if (activeHandle.mode == ChartEditMode.Stage)
-                {
-                    var p = chart.stagePath.points[activeHandle.index]; p.x = point.x; p.y = point.y; p.z = point.z;
-                }
-                else
-                {
-                    var section = chart.sections[selectedSection];
-                    if (activeHandle.index < section.placements.Length)
-                    {
-                        var placement = section.placements[activeHandle.index];
-                        float d = spatial.DistanceAtTime(tempo.SecondsAtBeat(section.startBeat)) + SpatialDirector.NearDepth;
-                        Vector3 local = Quaternion.Inverse(spatial.RouteRotationAt(d)) * (point - spatial.RouteAt(d));
-                        placement.x = local.x; placement.y = local.y;
-                    }
-                }
-                tempo = new TempoMap(chart.tempos, chart.ticksPerBeat); spatial = new SpatialDirector(chart, tempo);
-                RebuildVisuals();
+                selectedSceneObject = Array.FindIndex(chart.sceneObjects, item => ReferenceEquals(item, picked) || item.id == picked.id);
+                EnsureVisualLibrary(); int assetIndex = sceneLibrary.FindIndex(item => item.id == picked.assetId);
+                if (assetIndex >= 0) selectedSceneAsset = assetIndex;
+                draggingHandle = false; SetStatus("Selected scene object: " + picked.name); UpdateViewportRect(); return selectedSceneObject >= 0;
             }
-            if (Input.GetMouseButtonUp(0)) { draggingHandle = false; activeHandle = null; }
+            if (clearWhenMiss) { selectedSceneObject = -1; draggingHandle = false; UpdateViewportRect(); }
+            return false;
         }
         void SelectHandle(ChartEditorHandle marker)
         {
+            mode = marker.mode;
             if (marker.mode == ChartEditMode.Stage) selectedStagePoint = marker.index;
             else if (marker.mode == ChartEditMode.Camera) selectedCameraKey = marker.index;
-            else if (marker.mode == ChartEditMode.Paths)
+            else if (marker.mode == ChartEditMode.Paths) selectedPath = marker.index;
+            else if (marker.mode == ChartEditMode.Notes)
             {
-                var placement = chart.sections[selectedSection].placements[marker.index];
-                selectedPath = Array.FindIndex(chart.paths, p => p.id == placement.pathId);
-                if (selectedPath < 0) selectedPath = 0;
+                selectedNote = marker.index;
+                selectedPath = Mathf.Max(0, Array.FindIndex(chart.paths, p => p.id == chart.notes[selectedNote].pathId));
             }
             RebuildVisuals();
         }
 
         void SetPlaying(bool value)
         {
+            if (value && songTime >= Duration) Seek(0);
             playing = value;
             if (!playing) audioSource.Pause(); else StartAudioAtCurrentTime();
+            if (!chartCameraPreview && spatial != null) RefreshEditorPlayheadVisuals();
         }
         void StartAudioAtCurrentTime()
         {
@@ -514,11 +611,14 @@ namespace GeometryRhythm.ChartEditor
             if (audioTime < 0 || audioTime >= audioSource.clip.length) return;
             audioSource.time = audioTime; audioSource.Play();
         }
-        void Seek(double value)
+        void Seek(double value, bool rebuildStaticVisuals = true)
         {
+            draggingHandle = false;
             songTime = Math.Max(0, Math.Min(Duration, value));
             if (playing) StartAudioAtCurrentTime();
-            RebuildVisuals();
+            if (rebuildStaticVisuals) RebuildVisuals();
+            else if (chartCameraPreview) RefreshPreviewVisuals();
+            else RefreshEditorPlayheadVisuals();
         }
 
         void RecordUndo()
@@ -532,11 +632,15 @@ namespace GeometryRhythm.ChartEditor
         }
         void Undo()
         {
+            CancelTimelineGesture();
+            draggingHandle = false;
             if (undo.Count == 0) return;
             redo.Push(JsonUtility.ToJson(chart)); chart = JsonUtility.FromJson<ChartData>(undo.Pop()); Rebuild("Undo");
         }
         void Redo()
         {
+            CancelTimelineGesture();
+            draggingHandle = false;
             if (redo.Count == 0) return;
             undo.Push(JsonUtility.ToJson(chart)); chart = JsonUtility.FromJson<ChartData>(redo.Pop()); Rebuild("Redo");
         }
@@ -561,31 +665,30 @@ namespace GeometryRhythm.ChartEditor
             {
                 var list = new List<CameraKey>(chart.cameraKeys);
                 float snappedBeat = Mathf.Round(CurrentBeat * chart.ticksPerBeat) / (float)chart.ticksPerBeat;
-                var key = new CameraKey { beat = snappedBeat, fov = sceneCamera.fieldOfView, usePathPose = true };
+                var previous = list.FindLast(k => k.beat <= snappedBeat);
+                var key = new CameraKey { beat = snappedBeat, fov = sceneCamera.fieldOfView, usePathPose = true,
+                    easing = previous == null ? SpatialDirector.CameraEaseInOut : previous.easing };
                 CapturePose(key);
                 int existing = list.FindIndex(k => Mathf.Abs(k.beat - snappedBeat) < .5f / chart.ticksPerBeat);
-                if (existing >= 0) list[existing] = key; else list.Add(key);
+                if (existing >= 0) { key.easing = list[existing].easing; list[existing] = key; } else list.Add(key);
                 list.Sort((a, b) => a.beat.CompareTo(b.beat));
                 chart.cameraKeys = list.ToArray(); selectedCameraKey = Array.IndexOf(chart.cameraKeys, key);
-            }, "Camera key captured (same-tick key replaced)");
+            }, "Camera key placed at yellow marker (same-tick key replaced)");
         }
         void CaptureSelectedCamera()
         {
-            Change(() => CapturePose(chart.cameraKeys[selectedCameraKey]), "Camera key updated from viewport");
+            Change(() => CapturePose(chart.cameraKeys[selectedCameraKey]), "Camera key moved to yellow marker");
         }
         void CapturePose(CameraKey key)
         {
-            float baseDistance = spatial.DistanceAtTime(tempo.SecondsAtBeat(key.beat));
-            Quaternion inverse = Quaternion.Inverse(spatial.RouteRotationAt(baseDistance));
-            Vector3 position = inverse * (sceneCamera.transform.position - spatial.RouteAt(baseDistance));
-            Vector3 target = inverse * (orbitPivot - spatial.RouteAt(baseDistance));
-            key.usePathPose = true;
-            key.positionX = position.x; key.positionY = position.y; key.positionForward = position.z;
-            key.targetX = target.x; key.targetY = target.y; key.targetForward = target.z;
+            key.usePathPose = false; key.useWorldPose = true;
+            key.worldPosition = PlacementMarkerPosition;
+            key.worldTarget = key.worldPosition + sceneCamera.transform.forward * 20;
             key.fov = sceneCamera.fieldOfView;
         }
         void AddSection()
         {
+            timelineSelection = TimelineKind.Section;
             Change(() =>
             {
                 float snappedBeat = Mathf.Round(CurrentBeat * chart.ticksPerBeat) / (float)chart.ticksPerBeat;
@@ -631,6 +734,7 @@ namespace GeometryRhythm.ChartEditor
         }
         void DeleteSelection()
         {
+            if (mode == ChartEditMode.Paths) { DeleteTimelineSelection(); return; }
             if (mode == ChartEditMode.Stage && chart.stagePath.points.Length > 2)
                 Change(() => { var list = new List<StagePointData>(chart.stagePath.points); list.RemoveAt(selectedStagePoint); chart.stagePath.points = list.ToArray(); selectedStagePoint = Mathf.Max(0, selectedStagePoint - 1); }, "Stage point deleted");
             else if (mode == ChartEditMode.Camera && chart.cameraKeys.Length > 1 && selectedCameraKey > 0)
@@ -641,32 +745,22 @@ namespace GeometryRhythm.ChartEditor
 
         void Normalize()
         {
+            foreach (var path in chart.paths)
+                if (path.offsetKeys != null) Array.Sort(path.offsetKeys, (a, b) => a.tick.CompareTo(b.tick));
             Array.Sort(chart.tempos, (a, b) => a.tick.CompareTo(b.tick));
             Array.Sort(chart.sections, (a, b) => a.startBeat.CompareTo(b.startBeat));
             Array.Sort(chart.cameraKeys, (a, b) => a.beat.CompareTo(b.beat));
             Array.Sort(chart.notes, (a, b) => a.tick != b.tick ? a.tick.CompareTo(b.tick) : string.CompareOrdinal(a.id, b.id));
+            Array.Sort(chart.effectClips, (a, b) => a.startTick.CompareTo(b.startTick));
+            Array.Sort(chart.cameraMotionClips, (a, b) => a.startTick.CompareTo(b.startTick));
         }
         void SaveFile()
         {
-            try
-            {
-                Normalize(); string json = JsonUtility.ToJson(chart, true);
-                string directory = Path.GetDirectoryName(Path.GetFullPath(filePath));
-                if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
-                File.WriteAllText(filePath, json);
-                try { ChartLoader.Parse(json); SetStatus("Saved and gameplay validation passed"); }
-                catch (Exception e) { SetStatus("Draft saved; validation: " + e.Message); }
-            }
-            catch (Exception e) { SetStatus("Save failed: " + e.Message); }
+            SaveCurrentChart();
         }
         void LoadFile()
         {
-            try
-            {
-                chart = JsonUtility.FromJson<ChartData>(File.ReadAllText(filePath));
-                EnsureData(); undo.Clear(); redo.Clear(); songTime = 0; SetupAudio(); Rebuild("Loaded " + filePath);
-            }
-            catch (Exception e) { SetStatus("Load failed: " + e.Message); if (chart == null) NewChart(); }
+            if (!TryLoadChart(filePath) && chart == null) NewChart();
         }
         void ValidateChart()
         {
@@ -674,22 +768,41 @@ namespace GeometryRhythm.ChartEditor
             catch (Exception e) { SetStatus("Validation failed: " + e.Message); }
         }
         void SetStatus(string value) { status = value; statusUntil = Time.realtimeSinceStartupAsDouble + 8; }
-        void SetMode(ChartEditMode value) { mode = value; RebuildVisuals(); }
+        void SetMode(ChartEditMode value)
+        {
+            CancelTimelineGesture(); timelineTrackScroll = 0;
+            draggingHandle = false; mode = value; RebuildVisuals();
+        }
 
         void OnGUI()
         {
             BuildStyles();
+            ReadWorkspaceKeys(Event.current);
+            DismissFilesMenu(Event.current);
+            ReadInspectorResize(Event.current);
+            ReadTimelinePointer(Event.current);
+            if (!CameraCurvePointerOwns(Event.current)) ReadHandles(Event.current);
+            if (clearGuiFocus) { GUI.FocusControl(null); clearGuiFocus = false; }
             Matrix4x4 previousMatrix = GUI.matrix;
             GUI.matrix = Matrix4x4.Scale(new Vector3(uiScale, uiScale, 1));
-            DrawToolbar();
-            DrawInspector();
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = previousEnabled && !WorkspaceInputBlocked;
+            DrawGizmo();
+            DrawCameraCurveControls();
+            if (!chartCameraPreview) { DrawInspector(); DrawSceneObjectDetails(); }
             DrawTimeline();
-            GUI.Label(new Rect(PanelWidth + 14, ToolbarHeight + 10, 480, 28),
-                chartCameraPreview ? "CHART CAMERA PREVIEW" : "RMB orbit · MMB pan · Wheel zoom · Shift+click adds stage point", smallStyle);
+            if (chartCameraPreview) DrawPreviewStatus(); else DrawNavigationStatus();
             if (Time.realtimeSinceStartupAsDouble < statusUntil)
-                GUI.Label(new Rect(PanelWidth + 18, ViewHeight - TimelineHeight - 42, ViewWidth - PanelWidth - 36, 32), status, statusStyle);
+                GUI.Label(new Rect((chartCameraPreview ? 0 : PanelWidth) + 18, ViewHeight - TimelineHeight - 42,
+                    ViewWidth - (chartCameraPreview ? 0 : PanelWidth) - RightPanelWidth - 36, 32), status, statusStyle);
+            GUI.enabled = previousEnabled && !WorkspaceModalOpen;
+            DrawToolbar();
+            GUI.enabled = previousEnabled;
+            if (showFilesMenu) DrawFilesMenu();
             if (showSettings) DrawSettings();
             if (showGuide) DrawGuide();
+            if (pendingFileAction != PendingFileAction.None) DrawUnsavedConfirmation();
+            textInputFocused = GUI.GetNameOfFocusedControl().StartsWith("Edit:", StringComparison.Ordinal);
             GUI.matrix = previousMatrix;
         }
         void BuildStyles()
@@ -714,6 +827,8 @@ namespace GeometryRhythm.ChartEditor
             selectedButtonStyle = new GUIStyle(buttonStyle);
             selectedButtonStyle.normal.background = selectedNormal; selectedButtonStyle.hover.background = selectedHover;
             selectedButtonStyle.normal.textColor = Color.white;
+            modeButtonStyle = new GUIStyle(buttonStyle) { padding = new RectOffset(5, 5, 5, 5) };
+            selectedModeButtonStyle = new GUIStyle(selectedButtonStyle) { padding = new RectOffset(5, 5, 5, 5) };
             panelStyle = new GUIStyle(GUI.skin.box) { border = new RectOffset(10, 10, 10, 10) }; panelStyle.normal.background = panel;
             toolbarStyle = new GUIStyle(panelStyle) { border = new RectOffset(4, 4, 4, 4) }; toolbarStyle.normal.background = toolbar;
             fieldStyle = new GUIStyle(GUI.skin.textField)
@@ -731,6 +846,7 @@ namespace GeometryRhythm.ChartEditor
             smallStyle.normal.textColor = new Color(.6f, .66f, .75f);
             statusStyle = new GUIStyle(panelStyle) { alignment = TextAnchor.MiddleCenter, fontSize = 13 };
             statusStyle.normal.textColor = Color.white;
+            BuildMinimalScrollStyles();
         }
         Texture2D RoundedTexture(Color color, int radius)
         {
@@ -750,41 +866,64 @@ namespace GeometryRhythm.ChartEditor
         {
             GUI.Box(new Rect(0, 0, ViewWidth, ToolbarHeight), "", toolbarStyle);
             GUILayout.BeginArea(new Rect(10, 7, ViewWidth - 20, 38)); GUILayout.BeginHorizontal();
-            GUILayout.Label("CHART STUDIO", titleStyle, GUILayout.Width(164));
-            ModeButton("1 Stage", ChartEditMode.Stage); ModeButton("2 Camera", ChartEditMode.Camera);
-            ModeButton("3 Paths", ChartEditMode.Paths); ModeButton("4 Notes", ChartEditMode.Notes); ModeButton("5 Map", ChartEditMode.Map);
+            GUILayout.Label("CHART STUDIO", ViewWidth < 950 ? headingStyle : titleStyle, GUILayout.Width(ViewWidth < 950 ? 130 : 164));
+            bool previous = GUI.enabled; GUI.enabled = previous && !chartCameraPreview && !showFilesMenu;
+            ModeButton("Scene", ChartEditMode.Scene); ModeButton("Stage", ChartEditMode.Stage);
+            ModeButton("Paths", ChartEditMode.Paths); ModeButton("Notes", ChartEditMode.Notes); ModeButton("Camera", ChartEditMode.Camera);
+            ModeButton("Effects", ChartEditMode.Effects); ModeButton("Motion", ChartEditMode.CameraMotion); ModeButton("Map", ChartEditMode.Map);
+            if (mode == ChartEditMode.Scene)
+            {
+                GUILayout.Space(5);
+                SceneToolButton(new GUIContent("↔", "Move selected object"), SceneTransformTool.Move);
+                SceneToolButton(new GUIContent("⟳", "Rotate selected object"), SceneTransformTool.Rotate);
+            }
+            GUI.enabled = previous;
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("New", GUILayout.Width(58))) NewChart();
-            if (GUILayout.Button("Load", GUILayout.Width(58))) LoadFile();
-            if (GUILayout.Button("Save", selectedButtonStyle, GUILayout.Width(58))) SaveFile();
-            if (GUILayout.Button("Guide", GUILayout.Width(62))) { showGuide = true; showSettings = false; }
-            if (GUILayout.Button("Settings", GUILayout.Width(78))) { showSettings = true; showGuide = false; }
+            if (GUILayout.Button("Files", showFilesMenu ? selectedButtonStyle : buttonStyle, GUILayout.Width(60)))
+            { showFilesMenu = !showFilesMenu; ReleaseMouse(); CancelTimelineGesture(); clearGuiFocus = true; }
+            if (GUILayout.Button("Settings", GUILayout.Width(78))) { showFilesMenu = false; showSettings = true; showGuide = false; }
+            if (GUILayout.Button("Save", selectedButtonStyle, GUILayout.Width(60))) { showFilesMenu = false; SaveFile(); }
             GUILayout.EndHorizontal(); GUILayout.EndArea();
         }
         void ModeButton(string label, ChartEditMode value)
         {
-            if (GUILayout.Button(label, mode == value ? selectedButtonStyle : buttonStyle, GUILayout.Width(74))) SetMode(value);
+            if (GUILayout.Button(label, mode == value ? selectedModeButtonStyle : modeButtonStyle, GUILayout.Width(ViewWidth < 1200 ? 57 : 68))) SetMode(value);
+        }
+        void SceneToolButton(GUIContent icon, SceneTransformTool tool)
+        {
+            if (GUILayout.Button(icon, sceneTransformTool == tool ? selectedModeButtonStyle : modeButtonStyle, GUILayout.Width(35)))
+            { sceneTransformTool = tool; draggingHandle = false; SetStatus(tool == SceneTransformTool.Move ? "Move tool" : "Rotate tool"); }
         }
         void DrawInspector()
         {
             GUI.Box(new Rect(0, ToolbarHeight, PanelWidth, ViewHeight - ToolbarHeight - TimelineHeight), "", panelStyle);
             GUILayout.BeginArea(new Rect(14, ToolbarHeight + 12, PanelWidth - 28, ViewHeight - ToolbarHeight - TimelineHeight - 24));
+            inspectorScroll = GUILayout.BeginScrollView(inspectorScroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
+            GUILayout.BeginVertical(GUILayout.Width(PanelWidth - 52));
             GUILayout.Label(mode.ToString().ToUpperInvariant(), headingStyle);
             GUILayout.Label("Chart: " + chart.title + "\nBeat " + CurrentBeat.ToString("0.000") + "   Time " + songTime.ToString("0.000") + "s", smallStyle);
             GUILayout.Space(8);
-            if (mode == ChartEditMode.Stage) DrawStageInspector();
+            if (mode == ChartEditMode.Scene) DrawSceneInspector();
+            else if (mode == ChartEditMode.Stage) DrawStageInspector();
             else if (mode == ChartEditMode.Camera) DrawCameraInspector();
             else if (mode == ChartEditMode.Paths) DrawPathInspector();
             else if (mode == ChartEditMode.Notes) DrawNoteInspector();
+            else if (mode == ChartEditMode.Effects) DrawEffectInspector();
+            else if (mode == ChartEditMode.CameraMotion) DrawCameraMotionInspector();
             else DrawMapInspector();
             GUILayout.FlexibleSpace();
-            GUILayout.Label("File", smallStyle); filePath = GUILayout.TextField(filePath);
+            GUILayout.Label(needsSaveAs ? "Unsaved chart · Files > Save As" : "File: " + Path.GetFileName(filePath), smallStyle);
             GUILayout.BeginHorizontal();
-            GUI.enabled = undo.Count > 0; if (GUILayout.Button("Undo  Ctrl+Z")) Undo();
-            GUI.enabled = redo.Count > 0; if (GUILayout.Button("Redo  Ctrl+Y")) Redo(); GUI.enabled = true;
+            bool previous = GUI.enabled;
+            GUI.enabled = previous && undo.Count > 0; if (GUILayout.Button("Undo  Ctrl+Z")) Undo();
+            GUI.enabled = previous && redo.Count > 0; if (GUILayout.Button("Redo  Ctrl+Y")) Redo(); GUI.enabled = previous;
             GUILayout.EndHorizontal();
             if (GUILayout.Button("Validate chart")) ValidateChart();
+            GUILayout.EndVertical(); GUILayout.EndScrollView();
             GUILayout.EndArea();
+            Color saved = GUI.color; GUI.color = inspectorResizing ? new Color(.25f, .78f, 1) : new Color(.22f, .28f, .36f);
+            GUI.DrawTexture(new Rect(PanelWidth - 2, ToolbarHeight, 4, ViewHeight - ToolbarHeight - TimelineHeight), Texture2D.whiteTexture);
+            GUI.color = saved;
         }
         void DrawStageInspector()
         {
@@ -811,57 +950,60 @@ namespace GeometryRhythm.ChartEditor
                 }
                 AddStagePoint(here);
             }
-            GUI.enabled = chart.stagePath.points.Length > 2;
-            if (GUILayout.Button("Delete selected point")) DeleteSelection(); GUI.enabled = true;
+            bool wasEnabled = GUI.enabled; GUI.enabled = wasEnabled && chart.stagePath.points.Length > 2;
+            if (GUILayout.Button("Delete selected point")) DeleteSelection(); GUI.enabled = wasEnabled;
             GUILayout.Space(10);
-            GUILayout.Label("Shift+click the ground to draw. Drag a sphere to move it.", smallStyle);
+            if (GUILayout.Button("Focus selected point  [F]")) FocusSelection();
+            GUILayout.Label("Select a sphere, then drag X / Y / Z arrows. Y changes height. The center square moves in the view plane. Shift+click adds a ground point.", smallStyle);
         }
         void DrawCameraInspector()
         {
             GUILayout.Label("Camera key " + selectedCameraKey + " / " + (chart.cameraKeys.Length - 1));
             var key = chart.cameraKeys[selectedCameraKey];
-            GUILayout.Label("Beat " + key.beat.ToString("0.###") + (key.usePathPose ? " · drawn pose" : " · legacy orbit"), smallStyle);
-            FloatField("FOV", ref key.fov); FloatField("Roll", ref key.roll);
-            if (key.usePathPose)
+            GUILayout.Label("Beat " + key.beat.ToString("0.###") + (key.useWorldPose ? " · world pose" : key.usePathPose ? " · route pose" : " · legacy orbit"), smallStyle);
+            if (spatial.UsesFixedCameraKeys) GUILayout.Label("Fixed endpoints / smooth rotation", smallStyle);
+            if (GUILayout.Button("Add Key at yellow marker")) AddCameraKey();
+            if (GUILayout.Button("Move selected key to marker")) CaptureSelectedCamera();
+            if (GUILayout.Button("Focus selected key  [F]")) FocusSelection();
+            bool previous = GUI.enabled; GUI.enabled = previous && chart.cameraKeys.Length > 1 && selectedCameraKey > 0;
+            if (GUILayout.Button("Delete selected key")) DeleteSelection(); GUI.enabled = previous;
+            key = chart.cameraKeys[selectedCameraKey];
+            bool changed = FloatField("FOV", ref key.fov); changed |= FloatField("Roll", ref key.roll);
+            key.fov = Mathf.Clamp(key.fov, 30, 85);
+            if (key.useWorldPose)
+            {
+                GUILayout.Label("Position (world)", smallStyle);
+                changed |= FloatField("X", ref key.worldPosition.x); changed |= FloatField("Y", ref key.worldPosition.y); changed |= FloatField("Z", ref key.worldPosition.z);
+                GUILayout.Label("Look target (world)", smallStyle);
+                changed |= FloatField("Target X", ref key.worldTarget.x); changed |= FloatField("Target Y", ref key.worldTarget.y); changed |= FloatField("Target Z", ref key.worldTarget.z);
+            }
+            else if (key.usePathPose)
             {
                 GUILayout.Label("Position  forward / x / y", smallStyle);
-                FloatField("Forward", ref key.positionForward); FloatField("X", ref key.positionX); FloatField("Y", ref key.positionY);
+                changed |= FloatField("Forward", ref key.positionForward); changed |= FloatField("X", ref key.positionX); changed |= FloatField("Y", ref key.positionY);
                 GUILayout.Label("Look target  forward / x / y", smallStyle);
-                FloatField("Forward", ref key.targetForward); FloatField("X", ref key.targetX); FloatField("Y", ref key.targetY);
+                changed |= FloatField("Target F", ref key.targetForward); changed |= FloatField("Target X", ref key.targetX); changed |= FloatField("Target Y", ref key.targetY);
             }
-            if (GUILayout.Button("Add key at playhead from viewport")) AddCameraKey();
-            if (GUILayout.Button("Overwrite key from viewport")) CaptureSelectedCamera();
-            GUI.enabled = chart.cameraKeys.Length > 1 && selectedCameraKey > 0;
-            if (GUILayout.Button("Delete selected key")) DeleteSelection(); GUI.enabled = true;
+            if (changed) Rebuild();
             GUILayout.Space(8);
-            GUILayout.Label("Frame the shot with RMB/MMB, set the orange pivot as the look target, then capture.", smallStyle);
+            if (selectedCameraKey + 1 < chart.cameraKeys.Length)
+                GUILayout.Label("Outgoing curve to K" + (selectedCameraKey + 1) + ": " +
+                    CameraCurveNames[Mathf.Max(0, Array.IndexOf(CameraCurveIds, SpatialDirector.CameraEasing(key)))], smallStyle);
+            GUILayout.Label("Use the small button at the middle of each orange K-to-K line to choose Linear, Ease In, Ease Out, Ease In-Out, or Smoother.", smallStyle);
+            GUILayout.Label("Yellow ball = New Key Position, fixed at the 3D viewport center. No automatic camera movement during editing playback or seeking. Add Key uses the yellow ball position.", smallStyle);
         }
         void DrawPathInspector()
         {
-            GUILayout.Label("Path sections");
-            GUILayout.BeginHorizontal();
-            for (int i = 0; i < chart.sections.Length; i++)
-                if (GUILayout.Button(i.ToString(), i == selectedSection ? selectedButtonStyle : buttonStyle, GUILayout.Width(40))) { selectedSection = i; RebuildVisuals(); }
-            GUILayout.EndHorizontal();
-            GUILayout.Label(chart.sections[selectedSection].name + " · beat " + chart.sections[selectedSection].startBeat.ToString("0.###"), smallStyle);
-            if (GUILayout.Button("Add section at playhead")) AddSection();
-            GUILayout.Space(8); GUILayout.Label("Note paths");
+            GUILayout.Label("Note paths");
             for (int i = 0; i < chart.paths.Length; i++)
                 if (GUILayout.Button(chart.paths[i].id, i == selectedPath ? selectedButtonStyle : buttonStyle)) { selectedPath = i; RebuildVisuals(); }
             if (GUILayout.Button("Add path")) AddPath();
-            var placement = Array.Find(chart.sections[selectedSection].placements, x => x.pathId == chart.paths[selectedPath].id);
-            if (placement != null)
-            {
-                GUILayout.Space(6); GUILayout.Label("Selected placement");
-                bool changed = false;
-                changed |= FloatField("X", ref placement.x); changed |= FloatField("Y", ref placement.y);
-                changed |= FloatField("Bend", ref placement.bend); changed |= FloatField("Lift", ref placement.lift);
-                if (changed) RebuildVisuals();
-            }
-            GUILayout.Label("Drag the section spheres in the 3D cross-section.", smallStyle);
+            DrawOffsetInspector();
+            GUILayout.Label("Layout sections are now clips in the bottom timeline.", smallStyle);
         }
         void DrawNoteInspector()
         {
+            GUILayout.Label("All notes stay visible at their fixed hit positions in edit mode. Select a note and press F to focus it.", smallStyle);
             GUILayout.Label("Target path");
             GUILayout.BeginHorizontal();
             for (int i = 0; i < chart.paths.Length; i++)
@@ -887,7 +1029,7 @@ namespace GeometryRhythm.ChartEditor
                 var n = chart.notes[nearest];
                 GUILayout.Label("Nearest: " + n.id + "\n" + n.action + " / " + n.pathId + " / tick " + n.tick, smallStyle);
                 if (GUILayout.Button("Select nearest note")) { selectedNote = nearest; RebuildVisuals(); }
-                GUI.enabled = selectedNote >= 0; if (GUILayout.Button("Delete selected note")) DeleteSelection(); GUI.enabled = true;
+                bool previous = GUI.enabled; GUI.enabled = previous && selectedNote >= 0; if (GUILayout.Button("Delete selected note")) DeleteSelection(); GUI.enabled = previous;
             }
         }
         void DrawMapInspector()
@@ -904,25 +1046,9 @@ namespace GeometryRhythm.ChartEditor
             GUILayout.Space(8);
             GUILayout.Label("The seed makes the same chart generate the same geometry. The protected corridor around the master spline remains empty.", smallStyle);
         }
-        void DrawTimeline()
-        {
-            GUI.Box(new Rect(0, ViewHeight - TimelineHeight, ViewWidth, TimelineHeight), "", toolbarStyle);
-            GUILayout.BeginArea(new Rect(14, ViewHeight - TimelineHeight + 10, ViewWidth - 28, TimelineHeight - 16));
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button(playing ? "Pause" : "Play", selectedButtonStyle, GUILayout.Width(64))) SetPlaying(!playing);
-            if (GUILayout.Button("−1 beat", GUILayout.Width(78))) Seek(tempo.SecondsAtBeat(Math.Max(0, CurrentBeat - 1)));
-            if (GUILayout.Button("+1 beat", GUILayout.Width(78))) Seek(tempo.SecondsAtBeat(Math.Min(chart.endBeat, CurrentBeat + 1)));
-            if (GUILayout.Button(chartCameraPreview ? "Camera preview · ON" : "Camera preview · OFF",
-                chartCameraPreview ? selectedButtonStyle : buttonStyle, GUILayout.Width(160))) chartCameraPreview = !chartCameraPreview;
-            GUILayout.Label(songTime.ToString("0.000") + " / " + Duration.ToString("0.000") + " sec    Beat " + CurrentBeat.ToString("0.000"));
-            GUILayout.EndHorizontal();
-            float next = GUILayout.HorizontalSlider((float)songTime, 0, (float)Math.Max(.001, Duration), GUILayout.Height(28));
-            if (Math.Abs(next - songTime) > .0001) Seek(next);
-            GUILayout.EndArea();
-        }
         void DrawSettings()
         {
-            float width = 410, height = 286;
+            float width = 410, height = 326;
             Rect area = new Rect((ViewWidth - width) * .5f, (ViewHeight - height) * .5f, width, height);
             GUI.Box(new Rect(0, 0, ViewWidth, ViewHeight), "", toolbarStyle);
             GUI.Box(area, "", panelStyle);
@@ -937,6 +1063,7 @@ namespace GeometryRhythm.ChartEditor
             GUILayout.Label("Resizable window · " + Screen.width + " × " + Screen.height + " px\nThe chart editor never forces fullscreen.", smallStyle);
             GUILayout.Space(12);
             if (GUILayout.Button("Validate current chart")) ValidateChart();
+            if (GUILayout.Button("Charting guide")) { showSettings = false; showGuide = true; }
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("Close", selectedButtonStyle)) showSettings = false;
             GUILayout.EndArea();
@@ -956,29 +1083,38 @@ namespace GeometryRhythm.ChartEditor
             GUI.Box(area, "", panelStyle);
             GUILayout.BeginArea(new Rect(area.x + 28, area.y + 22, width - 56, height - 44));
             GUILayout.Label("QUICK CHARTING GUIDE", titleStyle);
-            GUILayout.Label("1  STAGE   Draw the master route first. Shift-click the ground to add points; drag the blue spheres to shape the world.\n\n" +
-                "2  MAP     Choose a seed, corridor width and density. Keep the play corridor readable; use generated geometry as a blockout.\n\n" +
-                "3  CAMERA  Move the viewport with RMB/MMB, put the orange pivot on the subject, move the playhead, then capture a camera key.\n\n" +
-                "4  PATHS   Add layout sections at musical phrases. Select a path and drag its sphere in the cross-section; Bend/Lift shape the approach.\n\n" +
-                "5  NOTES   Select a path and TAP/DRAG type, move to a beat, then add the note. Protected notes accept input anywhere.\n\n" +
-                "6  REVIEW  Enable Camera preview, play through the section, run Validate, then Save. Start sparse and add density only after camera and paths are readable.", smallStyle);
+            GUILayout.Label("Caps Lock ON: fly with WASD, Space up, Shift down, Ctrl fast. RMB in viewport captures the mouse; Esc releases it. Caps OFF: RMB orbit, MMB pan. Wheel zoom is disabled.\n\n" +
+                "1  SCENE   Place or import assets, click objects in the viewport, then use the top Move / Rotate icons and right-side inspector. Drag the left panel edge to resize it.\n\n" +
+                "2  STAGE / PATHS / NOTES   Shape the route after the world exists, then author play paths and notes.\n\n" +
+                "3  CAMERA  Build the base shot with world-space camera keys.\n\n" +
+                "4  EFFECTS Add reusable screen, lighting, particle and object-effect clips on the timeline.\n\n" +
+                "5  MOTION  Layer reusable shake, punch, orbit, roll and custom keyed motion over the base camera.\n\n" +
+                "6  REVIEW  F5 starts a clean preview. Space pauses; Esc returns to editing. Ctrl + wheel zooms the timeline.", smallStyle);
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Start with Stage", selectedButtonStyle)) { showGuide = false; SetMode(ChartEditMode.Stage); }
+            if (GUILayout.Button("Start with Scene", selectedButtonStyle)) { showGuide = false; SetMode(ChartEditMode.Scene); }
             if (GUILayout.Button("Close")) showGuide = false;
             GUILayout.EndArea();
         }
-        bool FloatField(string label, ref float value)
+        bool FloatField(string label, ref float value, bool recordUndo = true)
         {
             GUILayout.BeginHorizontal(); GUILayout.Label(label, GUILayout.Width(82));
-            string text = GUILayout.TextField(value.ToString("0.###", CultureInfo.InvariantCulture));
+            string name = "Edit:" + mode + ":" + label;
+            if (GUI.GetNameOfFocusedControl() != name || !numericEdits.ContainsKey(name))
+                numericEdits[name] = value.ToString("0.###", CultureInfo.InvariantCulture);
+            GUI.SetNextControlName(name);
+            string previousText = numericEdits[name];
+            string text = GUILayout.TextField(previousText, GUILayout.MinWidth(30));
+            numericEdits[name] = text;
             GUILayout.EndHorizontal();
-            if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed) && !Mathf.Approximately(parsed, value))
-            { value = parsed; return true; }
+            // Display rounding must never mutate chart values or add undo entries.
+            if (text == previousText) return false;
+            if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed) && !float.IsNaN(parsed) && !float.IsInfinity(parsed) && !Mathf.Approximately(parsed, value))
+            { if (recordUndo) RecordUndo(); value = parsed; return true; }
             return false;
         }
         bool IntField(string label, ref int value)
         {
-            GUILayout.BeginHorizontal(); GUILayout.Label(label, GUILayout.Width(82)); string text = GUILayout.TextField(value.ToString()); GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal(); GUILayout.Label(label, GUILayout.Width(82)); GUI.SetNextControlName("Edit:" + label); string text = GUILayout.TextField(value.ToString()); GUILayout.EndHorizontal();
             if (int.TryParse(text, out int parsed) && parsed != value) { value = parsed; return true; } return false;
         }
         void Slider(string label, ref float value, float min, float max)
@@ -990,6 +1126,8 @@ namespace GeometryRhythm.ChartEditor
 
         void OnDestroy()
         {
+            ReleaseMouse();
+            authoredVisuals?.Dispose();
             if (generatedAudio != null) Destroy(generatedAudio);
             foreach (var material in ownedMaterials) if (material != null) Destroy(material);
             foreach (var texture in ownedTextures) if (texture != null) Destroy(texture);
@@ -998,15 +1136,111 @@ namespace GeometryRhythm.ChartEditor
         IEnumerator SmokeTest()
         {
             Directory.CreateDirectory(smokeDirectory);
-            yield return null;
+            // Wait past the standalone splash screen before capturing rendered UI.
+            yield return new WaitForSecondsRealtime(3);
+            while (!UnityEngine.Rendering.SplashScreen.isFinished) yield return null;
+            bool interactionsPassed = true;
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-chartEditorInteractionSmoke") >= 0)
+            {
+                interactionsPassed = RunInteractionChecks();
+                showSettings = showGuide = false; showMap = true;
+                selectedStagePoint = 2; SetMode(ChartEditMode.Stage); FocusSelection();
+                yield return CaptureCheckScreenshot("stage-xyz.png");
+                SetMode(ChartEditMode.Camera); FocusSelection();
+                yield return CaptureCheckScreenshot("camera-marker.png");
+                SetMode(ChartEditMode.Paths); Seek(tempo.SecondsAtBeat(32)); FocusSelection();
+                yield return CaptureCheckScreenshot("path-xy.png");
+                interactionsPassed &= ScreenshotHasContent(Path.Combine(smokeDirectory, "stage-xyz.png")) &&
+                    ScreenshotHasContent(Path.Combine(smokeDirectory, "camera-marker.png")) &&
+                    ScreenshotHasContent(Path.Combine(smokeDirectory, "path-xy.png"));
+            }
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-chartEditorTimelineSmoke") >= 0)
+            {
+                interactionsPassed &= RunTimelineChecks();
+                PrepareTimelinePreview();
+                foreach (ChartEditMode view in new[] { ChartEditMode.Stage, ChartEditMode.Camera, ChartEditMode.Paths, ChartEditMode.Notes })
+                {
+                    SetMode(view); timelineTrackScroll = 0;
+                    yield return CaptureCheckScreenshot("timeline-" + view.ToString().ToLowerInvariant() + ".png");
+                    interactionsPassed &= ScreenshotHasContent(Path.Combine(smokeDirectory, "timeline-" + view.ToString().ToLowerInvariant() + ".png"));
+                }
+            }
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-chartEditorWorkspaceSmoke") >= 0)
+            {
+                interactionsPassed &= RunWorkspaceChecks();
+                PrepareTimelinePreview(); SetMode(ChartEditMode.Paths);
+                yield return CaptureCheckScreenshot("workspace-scrollbars.png");
+                showFilesMenu = true;
+                yield return CaptureCheckScreenshot("workspace-files.png");
+                showFilesMenu = false;
+                chart.cameraKeys = new[] { new CameraKey { beat = 0, distance = 25, height = 6, fov = 53 } };
+                Rebuild(); SetPreviewMode(true); SetPlaying(false);
+                yield return CaptureCheckScreenshot("workspace-preview.png");
+                SetPreviewMode(false);
+                interactionsPassed &= ScreenshotHasContent(Path.Combine(smokeDirectory, "workspace-scrollbars.png")) &&
+                    ScreenshotHasContent(Path.Combine(smokeDirectory, "workspace-files.png")) &&
+                    ScreenshotHasContent(Path.Combine(smokeDirectory, "workspace-preview.png"));
+            }
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-chartEditorNoteSmoke") >= 0)
+            {
+                interactionsPassed &= RunStaticNoteChecks();
+                PrepareTimelinePreview(); SetMode(ChartEditMode.Notes); selectedNote = 15; FocusSelection();
+                Seek(0); yield return CaptureCheckScreenshot("static-notes-start.png");
+                Seek(Duration); yield return CaptureCheckScreenshot("static-notes-end.png");
+                interactionsPassed &= ScreenshotHasContent(Path.Combine(smokeDirectory, "static-notes-start.png")) &&
+                    ScreenshotHasContent(Path.Combine(smokeDirectory, "static-notes-end.png"));
+            }
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-chartEditorPlaybackSmoke") >= 0)
+            {
+                interactionsPassed &= RunEditingPlaybackChecks();
+                PrepareTimelinePreview();
+                chart.cameraKeys = new[] { new CameraKey { beat = 0, distance = 25, height = 6, fov = 53 } };
+                selectedCameraKey = 0; Rebuild(); SetMode(ChartEditMode.Camera); Seek(12);
+                orbitPivot = EditorPlayheadPosition(songTime); orbitYaw = 25; orbitPitch = 22; orbitDistance = 52; ApplyOrbitCamera();
+                SetPlaying(true);
+                yield return CaptureCheckScreenshot("editing-live-playback.png");
+                SetPlaying(false);
+                interactionsPassed &= ScreenshotHasContent(Path.Combine(smokeDirectory, "editing-live-playback.png"));
+            }
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-chartEditorCameraTweenSmoke") >= 0)
+            {
+                interactionsPassed &= RunCameraTweenChecks();
+                var input = CameraTweenInput();
+                if (input != null)
+                {
+                    chart = input; selectedCameraKey = selectedStagePoint = selectedPath = selectedSection = 0;
+                    selectedNote = -1; Rebuild(); SetMode(ChartEditMode.Camera);
+                    Seek(tempo.SecondsAtBeat(chart.cameraKeys[1].beat * .5)); SetPreviewMode(true); SetPlaying(false);
+                    yield return CaptureCheckScreenshot("camera-tween-midpoint.png");
+                    Seek(tempo.SecondsAtBeat(chart.cameraKeys[1].beat * .888273));
+                    spatial.EvaluateCamera(sceneCamera, songTime);
+                    yield return CaptureCheckScreenshot("camera-tween-steep.png");
+                    SetPreviewMode(false);
+                    interactionsPassed &= ScreenshotHasContent(Path.Combine(smokeDirectory, "camera-tween-midpoint.png")) &&
+                        ScreenshotHasContent(Path.Combine(smokeDirectory, "camera-tween-steep.png"));
+                }
+            }
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-chartEditorVisualSmoke") >= 0)
+            {
+                interactionsPassed &= RunVisualAuthoringChecks();
+                EnsureVisualLibrary(); SetMode(ChartEditMode.Scene); AddSceneObject(sceneLibrary[1]);
+                yield return CaptureCheckScreenshot("visual-scene.png");
+                SetMode(ChartEditMode.Effects); AddEffectClip(effectLibrary[0]);
+                yield return CaptureCheckScreenshot("visual-effects.png");
+                SetMode(ChartEditMode.CameraMotion); AddMotionClip(motionLibrary[0]);
+                yield return CaptureCheckScreenshot("visual-motion.png");
+                interactionsPassed &= ScreenshotHasContent(Path.Combine(smokeDirectory, "visual-scene.png")) &&
+                    ScreenshotHasContent(Path.Combine(smokeDirectory, "visual-effects.png")) &&
+                    ScreenshotHasContent(Path.Combine(smokeDirectory, "visual-motion.png"));
+            }
             yield return new WaitForEndOfFrame();
             string screenshot = Path.Combine(smokeDirectory, "chart-studio.png");
             if (File.Exists(screenshot)) File.Delete(screenshot);
             ScreenCapture.CaptureScreenshot(screenshot);
             float deadline = Time.realtimeSinceStartup + 5;
             while (!File.Exists(screenshot) && Time.realtimeSinceStartup < deadline) yield return null;
-            bool passed = chart != null && chart.stagePath != null && chart.stagePath.points.Length >= 2 &&
-                spatial != null && visualRoot != null && sceneCamera != null && File.Exists(screenshot);
+            bool passed = interactionsPassed && chart != null && chart.stagePath != null && chart.stagePath.points.Length >= 2 &&
+                spatial != null && visualRoot != null && sceneCamera != null && ScreenshotHasContent(screenshot);
             File.WriteAllText(Path.Combine(smokeDirectory, "chart-studio-smoke.txt"),
                 "PASS=" + passed + "\nStagePoints=" + chart.stagePath.points.Length +
                 "\nPaths=" + chart.paths.Length + "\nMapChildren=" + visualRoot.childCount +

@@ -23,6 +23,12 @@ namespace GeometryRhythm
         public SectionData[] sections;
         public CameraKey[] cameraKeys;
         public NoteData[] notes;
+        // Authored visuals are optional so every v1 chart remains readable. Instances copy
+        // the reusable-library values into the chart; playback never depends on a user's
+        // local preset library being present.
+        public SceneObjectData[] sceneObjects;
+        public EffectClipData[] effectClips;
+        public CameraMotionClipData[] cameraMotionClips;
     }
     [Serializable] public sealed class StagePathData
     {
@@ -42,7 +48,15 @@ namespace GeometryRhythm
         public float heightVariation = 16;
     }
     [Serializable] public sealed class TempoData { public int tick; public float bpm; }
-    [Serializable] public sealed class PathData { public string id; public float roll; }
+    [Serializable] public sealed class PathData
+    {
+        public string id;
+        public float roll;
+        // Optional spatial offset track. Tick maps to a cross-section on the stage route.
+        // Absent tracks retain the original section/bend/lift behaviour.
+        public PathOffsetKey[] offsetKeys;
+    }
+    [Serializable] public sealed class PathOffsetKey { public int tick; public float x, y; }
     [Serializable] public sealed class PathPlacement
     {
         public string pathId;
@@ -57,6 +71,9 @@ namespace GeometryRhythm
     [Serializable] public sealed class CameraKey
     {
         public float beat;
+        // Outgoing interpolation from this key to the next. Missing values keep the
+        // original smoothstep behaviour for existing version-1 charts.
+        public string easing;
         public float orbit;
         public float roll;
         public float distance = 25;
@@ -71,6 +88,10 @@ namespace GeometryRhythm
         public float targetForward = 18;
         public float targetX;
         public float targetY = 2;
+        // New editor captures are explicit world positions, exactly at the placement marker.
+        public bool useWorldPose;
+        public Vector3 worldPosition;
+        public Vector3 worldTarget;
     }
     [Serializable] public sealed class NoteData
     {
@@ -79,6 +100,67 @@ namespace GeometryRhythm
         public string pathId;
         public string action;
         public bool protectedNote;
+    }
+
+    [Serializable] public sealed class SceneObjectData
+    {
+        public string id;
+        public string name;
+        public string assetId;
+        // cube, sphere, cylinder, plane, obj, image or video
+        public string kind = "cube";
+        public string sourcePath;
+        public Vector3 position;
+        public Vector3 rotation;
+        public Vector3 scale = Vector3.one;
+        public Color color = Color.white;
+        // none, float, rotate, pulse or pendulum
+        public string animation = "none";
+        public float animationSpeed = 1;
+        public float animationAmount = 1;
+    }
+
+    [Serializable] public sealed class EffectClipData
+    {
+        public string id;
+        public string name;
+        public string presetId;
+        public int startTick;
+        public int durationTicks = 960;
+        // flash, color, fog, light, scenePulse, shockwave, particles, speedLines or glitch
+        public string kind = "flash";
+        // screen, scene, judgement or a SceneObjectData id
+        public string target = "screen";
+        public Color color = Color.white;
+        public float intensity = 1;
+        public float frequency = 1;
+        public int seed;
+        public string easing = "smooth";
+    }
+
+    [Serializable] public sealed class CameraMotionKeyData
+    {
+        // Normalized time in the reusable clip, in [0,1].
+        public float time;
+        public Vector3 position;
+        public Vector3 rotation;
+        public float fov;
+    }
+
+    [Serializable] public sealed class CameraMotionClipData
+    {
+        public string id;
+        public string name;
+        public string presetId;
+        public int startTick;
+        public int durationTicks = 960;
+        // keys is fully user-authored; kind adds an optional procedural layer.
+        public string kind = "custom";
+        public float intensity = 1;
+        public float frequency = 2;
+        public int seed;
+        public string easing = "smooth";
+        public CameraMotionKeyData[] keys;
     }
 
     /// <summary>Piecewise tempo map; all runtime judgment times use double seconds.</summary>
@@ -158,7 +240,16 @@ namespace GeometryRhythm
             var paths = new HashSet<string>();
             Require(c.paths != null && c.paths.Length > 0, "missing paths");
             foreach (var p in c.paths)
+            {
                 Require(!string.IsNullOrEmpty(p.id) && paths.Add(p.id) && Finite(p.roll), "duplicate/invalid path");
+                if (p.offsetKeys == null) continue;
+                for (int i = 0; i < p.offsetKeys.Length; i++)
+                {
+                    var k = p.offsetKeys[i];
+                    Require(k != null && k.tick >= 0 && k.tick <= c.endBeat * c.ticksPerBeat &&
+                        Finite(k.x) && Finite(k.y) && (i == 0 || k.tick > p.offsetKeys[i - 1].tick), "invalid path offset key");
+                }
+            }
             Require(c.sections != null && c.sections.Length > 0 && c.sections[0].startBeat == 0, "missing section at zero");
             for (int i = 0; i < c.sections.Length; i++)
             {
@@ -178,9 +269,14 @@ namespace GeometryRhythm
                 Require(Finite(k.beat) && Finite(k.orbit) && Finite(k.roll) && Finite(k.height) && Finite(k.distance)
                     && k.distance >= 12 && Finite(k.fov) && k.fov >= 30 && k.fov <= 85
                     && (i == 0 || k.beat > c.cameraKeys[i - 1].beat), "invalid camera key");
+                Require(SpatialDirector.IsCameraEasing(k.easing), "unknown camera easing");
                 if (k.usePathPose)
                     Require(Finite(k.positionForward) && Finite(k.positionX) && Finite(k.positionY) &&
                         Finite(k.targetForward) && Finite(k.targetX) && Finite(k.targetY), "invalid camera path pose");
+                if (k.useWorldPose)
+                    Require(Finite(k.worldPosition.x) && Finite(k.worldPosition.y) && Finite(k.worldPosition.z) &&
+                        Finite(k.worldTarget.x) && Finite(k.worldTarget.y) && Finite(k.worldTarget.z) &&
+                        (k.worldTarget - k.worldPosition).sqrMagnitude > .000001f, "invalid camera world pose");
             }
             Require(c.notes != null && c.notes.Length > 0, "missing notes");
             var ids = new HashSet<string>();
@@ -193,6 +289,27 @@ namespace GeometryRhythm
                 int section = 0;
                 while (section + 1 < c.sections.Length && c.sections[section + 1].startBeat <= beat) section++;
                 Require(Array.Exists(c.sections[section].placements, p => p.pathId == n.pathId), "note on inactive path: " + n.id);
+            }
+            if (c.sceneObjects != null)
+            {
+                var sceneIds = new HashSet<string>();
+                foreach (var o in c.sceneObjects)
+                    Require(o != null && !string.IsNullOrEmpty(o.id) && sceneIds.Add(o.id) &&
+                        Finite(o.position.x) && Finite(o.position.y) && Finite(o.position.z) &&
+                        Finite(o.rotation.x) && Finite(o.rotation.y) && Finite(o.rotation.z) &&
+                        Finite(o.scale.x) && Finite(o.scale.y) && Finite(o.scale.z) &&
+                        Finite(o.animationSpeed) && Finite(o.animationAmount), "invalid scene object");
+            }
+            if (c.effectClips != null) foreach (var e in c.effectClips)
+                Require(e != null && !string.IsNullOrEmpty(e.id) && e.startTick >= 0 && e.durationTicks > 0 &&
+                    e.startTick + e.durationTicks <= c.endBeat * c.ticksPerBeat && Finite(e.intensity) && Finite(e.frequency), "invalid effect clip");
+            if (c.cameraMotionClips != null) foreach (var m in c.cameraMotionClips)
+            {
+                Require(m != null && !string.IsNullOrEmpty(m.id) && m.startTick >= 0 && m.durationTicks > 0 &&
+                    m.startTick + m.durationTicks <= c.endBeat * c.ticksPerBeat && Finite(m.intensity) && Finite(m.frequency), "invalid camera motion clip");
+                if (m.keys != null) foreach (var k in m.keys)
+                    Require(k != null && Finite(k.time) && k.time >= 0 && k.time <= 1 && Finite(k.position.x) && Finite(k.position.y) &&
+                        Finite(k.position.z) && Finite(k.rotation.x) && Finite(k.rotation.y) && Finite(k.rotation.z) && Finite(k.fov), "invalid camera motion key");
             }
             Array.Sort(c.notes, (a, b) => { int t = a.tick.CompareTo(b.tick); return t != 0 ? t : string.CompareOrdinal(a.id, b.id); });
             return c;

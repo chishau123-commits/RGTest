@@ -5,8 +5,8 @@ using UnityEngine.UI;
 
 namespace GeometryRhythm
 {
-    /// <summary>Cyberpunk frontend presentation. A safe-area fitted 1600x900 canvas;
-    /// it never changes render resolution, note geometry, clock or judgement coordinates.</summary>
+    /// <summary>Landscape, touch-first rhythm-game UI. All essential controls are at least
+    /// 112 design units high. Menus and HUD share safe-area fitting, without moving the world.</summary>
     public sealed class RhythmFrontendView
     {
         readonly RhythmFrontend owner;
@@ -14,9 +14,10 @@ namespace GeometryRhythm
         readonly Canvas canvas;
         readonly RectTransform artboard;
         readonly Dictionary<string,Button> buttons=new Dictionary<string,Button>();
-        RectTransform page,scan;
+        RectTransform page;
         CanvasGroup pageFade;
-        float pageStarted,lastAnimation;
+        PagedSongCarousel carousel;
+        float pageStarted;
         Rect lastSafe;
         Vector2 lastCanvas;
 
@@ -30,175 +31,149 @@ namespace GeometryRhythm
             scaler.referenceResolution=new Vector2(1600,900);scaler.matchWidthOrHeight=.5f;
             var wash=new GameObject("Midnight menu background",typeof(RectTransform),typeof(Image));wash.transform.SetParent(obj.transform,false);
             var r=wash.GetComponent<RectTransform>();r.anchorMin=Vector2.zero;r.anchorMax=Vector2.one;r.offsetMin=r.offsetMax=Vector2.zero;
-            wash.GetComponent<Image>().color=CyberTheme.Background;
-            // The opaque menu background catches input: a menu click never reaches gameplay.
-            artboard=new GameObject("Safe area / 1600 x 900",typeof(RectTransform)).GetComponent<RectTransform>();
-            artboard.SetParent(obj.transform,false);artboard.anchorMin=artboard.anchorMax=new Vector2(.5f,.5f);artboard.sizeDelta=new Vector2(1600,900);
+            wash.GetComponent<Image>().color=CyberTheme.Background; // Blocks input from reaching the playfield.
+            artboard=new GameObject("Mobile safe area / 1600 x 900",typeof(RectTransform)).GetComponent<RectTransform>();
+            artboard.SetParent(obj.transform,false);artboard.anchorMin=artboard.anchorMax=new Vector2(.5f,.5f);
+            artboard.sizeDelta=new Vector2(1600,900);
         }
         public void UpdateLayout()
         {
-            if(!canvas.gameObject.activeSelf) return;
-            // Tiny, non-flashing presentation animation. No per-frame artwork mesh rebuild.
-            if(pageFade!=null) pageFade.alpha=Mathf.Clamp01((Time.unscaledTime-pageStarted)/.18f);
-            if(scan!=null && Time.unscaledTime-lastAnimation>.05f)
-            {
-                lastAnimation=Time.unscaledTime;
-                scan.anchoredPosition=new Vector2(scan.anchoredPosition.x,-(scanStart+Mathf.Repeat(Time.unscaledTime*.08f,1)*scanHeight));
-            }
-            var size=((RectTransform)canvas.transform).rect.size;var safe=Screen.safeArea;
-            if(lastSafe==safe && lastCanvas==size) return;
-            lastSafe=safe;lastCanvas=size;
-            float sx=size.x/Math.Max(1,Screen.width),sy=size.y/Math.Max(1,Screen.height);
-            artboard.anchoredPosition=new Vector2((safe.center.x-Screen.width*.5f)*sx,(safe.center.y-Screen.height*.5f)*sy);
-            artboard.localScale=Vector3.one*Mathf.Min(safe.width*sx/1600,safe.height*sy/900);
+            if(!canvas.gameObject.activeSelf)return;
+            if(pageFade!=null)pageFade.alpha=Mathf.Clamp01((Time.unscaledTime-pageStarted)/.18f);
+            var size=((RectTransform)canvas.transform).rect.size;var safe=MobileUiLayout.SafeArea;
+            if(lastSafe==safe && lastCanvas==size)return;
+            lastSafe=safe;lastCanvas=size;MobileUiLayout.Apply(artboard,canvas);
         }
-        float scanStart,scanHeight;
         void Begin(string name,string section)
         {
-            canvas.gameObject.SetActive(true);buttons.Clear();scan=null;
+            canvas.gameObject.SetActive(true);buttons.Clear();carousel=null;
             if(page!=null){page.gameObject.SetActive(false);UnityEngine.Object.Destroy(page.gameObject);}
             page=Rect(name,artboard,0,0,1600,900);pageFade=page.gameObject.AddComponent<CanvasGroup>();
             pageStarted=Time.unscaledTime;pageFade.alpha=0;
-            var frame=Rect("Circuit frame",page,0,0,1600,900).gameObject.AddComponent<CyberFrameGraphic>();frame.raycastTarget=false;
-            var logo=Panel(page,"Brand plate",48,35,95,60,CyberTheme.PanelLight,CyberTheme.Cyan);
-            Label(logo.rectTransform,"Monogram","G/R",8,3,79,51,34,true,CyberTheme.Cyan,TextAnchor.MiddleCenter);
-            var brand=Label(page,"Brand",gameTitle.Replace('\n',' ').ToUpperInvariant(),166,40,680,31,25,true);Fit(brand,14,25);
-            Mono(page,"Subsystem","SPATIAL RHYTHM SYSTEM  /  LOCAL CLIENT",168,75,720,17,12,CyberTheme.Muted);
-            Mono(page,"Page index",section,1020,45,500,29,15,CyberTheme.Text,TextAnchor.MiddleRight);
-            Mono(page,"Connection","OFFLINE  /  STANDALONE",1100,77,420,17,11,CyberTheme.Cyan,TextAnchor.MiddleRight);
-            Mono(page,"Footer","G/R   //   TRACE THE SIGNAL",48,861,610,22,12,CyberTheme.Muted);
-            Mono(page,"Version","REAL-TIME 3D  /  PROTOTYPE 01",1030,851,490,22,12,CyberTheme.Muted,TextAnchor.MiddleRight);
+            Rect("Neon edge frame",page,0,0,1600,900).gameObject.AddComponent<CyberFrameGraphic>().raycastTarget=false;
+            Label(page,"Page heading",section,224,43,1050,88,56,true);
+            Label(page,"Brand","G/R",1400,54,136,61,38,true,CyberTheme.Cyan,TextAnchor.MiddleRight);
             UpdateLayout();
         }
+        void Back(string name,Action callback)=>ActionButton(page,name,"<",48,30,128,116,callback);
         public void ShowTitle()
         {
-            Begin("Title page","01   /   SYSTEM ENTRY");
-            Mono(page,"Eyebrow","[ AUDIO / VISUAL INTERFACE ]",80,185,740,28,17,CyberTheme.Cyan);
-            // Offset outline-like shadow is deliberately static, not a flickering glitch.
-            var shadow=Label(page,"Title chromatic shadow",gameTitle.ToUpperInvariant(),77,252,830,233,110,true,CyberTheme.Alpha(CyberTheme.Purple,.22f));
-            shadow.lineSpacing=.83f;Fit(shadow,45,110);
-            var title=Label(page,"Game title",gameTitle.ToUpperInvariant(),80,249,830,233,110,true);title.lineSpacing=.83f;Fit(title,45,110);
-            Box(page,"Title underline",83,504,110,4,CyberTheme.Cyan);
-            Box(page,"Title underline secondary",200,504,257,1,CyberTheme.Alpha(CyberTheme.Purple,.65f));
-            Label(page,"Title description","DECODE THE RHYTHM.\nTRACE THE SIGNAL.",82,544,790,92,32,true,CyberTheme.Muted);
-            Mono(page,"Capabilities","3D SPACE    /    MULTIPLE PATHS    /    ONE RHYTHM",84,655,820,25,14,CyberTheme.Cyan);
-            ActionButton(page,"Open songs","ENTER MUSIC ARCHIVE   /   START",80,708,650,74,owner.ShowSongs,true);
-            Mono(page,"Enter hint","[ ENTER ]   CONNECT TO YOUR NEXT TRACK",84,801,820,22,12,CyberTheme.Muted);
-            Panel(page,"Core housing",938,189,574,526,CyberTheme.Alpha(CyberTheme.Panel,.5f),CyberTheme.Purple);
-            Mono(page,"Core index","SIGNAL CORE  /  001",966,213,495,23,13,CyberTheme.Cyan);
-            Artwork(page,978,248,494,432);
-            Scanner(951,242,548,441);
-            Mono(page,"Core caption","GEOMETRY  /  FIRST COLLECTION",960,744,535,23,15,CyberTheme.Text,TextAnchor.MiddleCenter);
-            Mono(page,"Core microtype","SYNTHETIC AUDIO  +  SPATIAL MOTION",960,778,535,20,11,CyberTheme.Muted,TextAnchor.MiddleCenter);
+            Begin("Title page","");
+            Label(page,"Tagline","A RHYTHM THROUGH SPACE",134,136,1312,68,36,true,CyberTheme.Cyan,TextAnchor.MiddleCenter);
+            Artwork(page,1054,232,387,387);
+            var shadow=Label(page,"Title chromatic shadow",gameTitle.ToUpperInvariant(),179,243,935,289,124,true,CyberTheme.Alpha(CyberTheme.Purple,.25f));
+            shadow.lineSpacing=.85f;Fit(shadow,55,124);
+            var title=Label(page,"Game title",gameTitle.ToUpperInvariant(),182,240,935,289,124,true);
+            title.lineSpacing=.85f;Fit(title,55,124);
+            Box(page,"Title underline",185,554,126,5,CyberTheme.Cyan);
+            Label(page,"Title subtitle","FOLLOW THE LINES. FEEL THE RHYTHM.",183,585,920,71,33,false,CyberTheme.Muted);
+            ActionButton(page,"Open songs","TAP TO START",480,709,640,128,owner.ShowSongs,true);
         }
         public void ShowSongs(IReadOnlyList<SongEntry> songs,int selected)
         {
-            Begin("Song selection","02   /   MUSIC ARCHIVE");
-            Label(page,"Library heading","SELECT TRACK",64,135,870,79,54,true);
-            Mono(page,"Library count",songs.Count.ToString("D2")+" TRACK"+(songs.Count==1?"":"S")+"  /  BUNDLED JSON COLLECTION",67,214,760,24,13,CyberTheme.Muted);
-            ActionButton(page,"Back to title","<  SYSTEM ENTRY",1292,156,244,49,owner.ShowTitle);
-            // Real scrolling catalog. Rebuilding the detail view keeps the selected row visible.
-            var viewport=Rect("Song list viewport",page,64,268,422,436);
-            viewport.gameObject.AddComponent<RectMask2D>();
-            viewport.gameObject.AddComponent<Image>().color=CyberTheme.Alpha(CyberTheme.Panel,.2f);
-            var content=Rect("Song rows",viewport,0,0,422,Math.Max(436,songs.Count*126));
-            var scroll=viewport.gameObject.AddComponent<ScrollRect>();scroll.viewport=viewport;scroll.content=content;
-            scroll.horizontal=false;scroll.vertical=true;scroll.movementType=ScrollRect.MovementType.Clamped;scroll.scrollSensitivity=32;
-            content.anchoredPosition=new Vector2(0,Mathf.Clamp(selected*126-126,0,Math.Max(0,songs.Count*126-436)));
-            for(int i=0;i<songs.Count;i++)
-            {
-                int index=i;bool active=i==selected;
-                var row=ActionButton(content,"Select song "+i,"",0,i*126,422,112,()=>owner.SelectSong(index),false,active?CyberTheme.PanelLight:CyberTheme.Panel);
-                var p=(RectTransform)row.transform;
-                Box(p,"Selected stripe",0,12,3,87,active?CyberTheme.Cyan:CyberTheme.Purple);
-                Mono(p,"Track number",(i+1).ToString("D2"),21,21,52,42,24,active?CyberTheme.Cyan:CyberTheme.Muted);
-                var name=Label(p,"Track title",songs[i].ShortTitle.ToUpperInvariant(),87,17,306,43,29,true);Fit(name,16,29);
-                Mono(p,"Track metadata",FormatTime(songs[i].Duration)+"  /  "+songs[i].Bpm+" BPM",88,68,312,25,13,CyberTheme.Muted);
-            }
-            Mono(page,"Library footnote","[ LOCAL ARCHIVE ]\nADD JSON CHARTS TO EXPAND THE LIBRARY",67,741,427,67,12,CyberTheme.Muted);
+            Begin("Song selection","SELECT MUSIC");Back("Back to title",owner.ShowTitle);
             if(songs.Count==0)
             {
-                Panel(page,"Empty archive",538,268,998,432,CyberTheme.Panel,CyberTheme.Purple);
-                Label(page,"Empty library","NO SIGNAL FOUND",577,344,908,71,44,true);
-                Label(page,"Empty help","Add a valid JSON chart to Resources/Charts.\nInvalid charts are reported in the Unity Console.",580,450,860,100,25,false,CyberTheme.Muted);
+                Artwork(page,182,219,408,408);
+                Label(page,"Empty library","NO SONGS YET",746,293,754,106,62,true);
+                Label(page,"Empty help","Your music collection will appear here.",750,425,744,110,36,false,CyberTheme.Muted);
+                ActionButton(page,"Empty back","BACK",928,708,592,124,owner.ShowTitle,true);
                 return;
             }
             var entry=songs[selected];
-            Panel(page,"Album sleeve",538,267,446,446,CyberTheme.Panel,CyberTheme.Purple);
-            Box(page,"Album spine",538,294,6,391,CyberTheme.Purple);
-            Mono(page,"Album edition","G/R  //  SPATIAL ARCHIVE",563,288,397,25,12,CyberTheme.Cyan);
-            Artwork(page,558,321,406,321);
-            var cover=Label(page,"Cover title",entry.ShortTitle.ToUpperInvariant(),564,647,390,42,30,true,CyberTheme.Cyan,TextAnchor.MiddleCenter);Fit(cover,17,30);
-            Scanner(552,320,418,302);
-            Mono(page,"Chart tag","CHART DATA   /   "+(selected+1).ToString("D3"),1024,270,490,22,13,CyberTheme.Lime);
-            var title=Label(page,"Selected title",entry.ShortTitle.ToUpperInvariant(),1020,309,516,82,49,true);Fit(title,25,49);
-            var author=Label(page,"Selected artist",string.IsNullOrWhiteSpace(entry.Chart.author)?"INDEPENDENT CHART":entry.Chart.author,1024,400,510,41,23,false,CyberTheme.Muted);Fit(author,14,23);
-            Box(page,"Metadata rail",1024,464,512,2,CyberTheme.Purple);
-            Metric("TEMPO",entry.Bpm,1024,490,243,92,CyberTheme.Cyan,"BPM");
-            Metric("DURATION",FormatTime(entry.Duration),1290,490,246,92,CyberTheme.Text);
-            Metric("NOTES",entry.Chart.notes.Length.ToString(),1024,605,243,91,CyberTheme.Text);
-            Metric("MAX PATHS",entry.MaxPaths.ToString("D2"),1290,605,246,91,CyberTheme.Purple);
-            ActionButton(page,"Watch autoplay","AUTOPLAY / PREVIEW",538,754,328,64,()=>owner.Play(true));
-            ActionButton(page,"Play chart","PLAY CHART   /   MANUAL  >",890,754,646,64,()=>owner.Play(false),true);
+            // Covers are actual chart entries, never decorative fake tracks. The large masked
+            // viewport supports finger drags; neighboring covers give a natural paging affordance.
+            var viewport=Rect("Swipe song covers",page,72,180,720,498);
+            viewport.gameObject.AddComponent<Image>().color=CyberTheme.Alpha(CyberTheme.Panel,.12f);
+            viewport.gameObject.AddComponent<RectMask2D>();
+            var content=Rect("Cover strip",viewport,0,0,720+(songs.Count-1)*588,498);
+            carousel=viewport.gameObject.AddComponent<PagedSongCarousel>();carousel.viewport=viewport;carousel.content=content;
+            carousel.PageCount=songs.Count;carousel.Stride=588;carousel.Selected=selected;carousel.horizontal=true;carousel.vertical=false;
+            carousel.movementType=ScrollRect.MovementType.Clamped;carousel.inertia=false;carousel.scrollSensitivity=50;
+            carousel.SelectPage(selected,false);carousel.SelectionChanged=owner.SelectSong;
+            for(int i=0;i<songs.Count;i++)
+            {
+                int index=i;bool active=i==selected;
+                var card=ActionButton(content,"Select song "+i,"",82+i*588,8,556,480,()=>owner.SelectSong(index),false,active?CyberTheme.PanelLight:CyberTheme.Panel);
+                var p=(RectTransform)card.transform;
+                Label(p,"Cover mark","G/R",26,20,450,52,30,true,CyberTheme.Cyan);
+                // Adjacent albums reuse the style, but the title always identifies their real chart.
+                Artwork(p,87,57,382,337);
+                var cover=Label(p,"Cover title",songs[i].ShortTitle.ToUpperInvariant(),26,394,504,76,42,true,CyberTheme.Cyan,TextAnchor.MiddleCenter);Fit(cover,26,42);
+            }
+            var title=Label(page,"Selected title",entry.ShortTitle.ToUpperInvariant(),862,209,674,155,65,true);Fit(title,38,65);
+            var author=Label(page,"Selected artist",string.IsNullOrWhiteSpace(entry.Chart.author)?"INDEPENDENT CHART":entry.Chart.author,866,375,665,73,34,false,CyberTheme.Muted);Fit(author,28,34);
+            Box(page,"Detail accent",866,477,660,2,CyberTheme.Purple);
+            Label(page,"Tempo",entry.Bpm+" BPM",866,508,310,67,40,true,CyberTheme.Cyan);
+            Label(page,"Duration",FormatTime(entry.Duration),1234,508,292,67,40,true,CyberTheme.Text,TextAnchor.MiddleRight);
+            Label(page,"Notes",entry.Chart.notes.Length+" NOTES",870,600,330,63,30,false,CyberTheme.Muted);
+            ActionButton(page,"Watch autoplay","PREVIEW",1200,582,332,116,()=>owner.Play(true));
+            Label(page,"Page count",(selected+1)+" / "+songs.Count,257,686,350,52,30,true,CyberTheme.Text,TextAnchor.MiddleCenter);
+            if(songs.Count>1)
+            {
+                var prev=ActionButton(page,"Previous song","<",90,714,128,116,()=>owner.SelectSong(selected-1));
+                var next=ActionButton(page,"Next song",">",646,714,128,116,()=>owner.SelectSong(selected+1));
+                prev.interactable=selected>0;next.interactable=selected<songs.Count-1;
+                Label(page,"Swipe hint","SWIPE TO SELECT",220,759,422,55,28,false,CyberTheme.Muted,TextAnchor.MiddleCenter);
+            }
+            else Label(page,"Single song hint","FIRST COLLECTION",128,757,610,55,28,false,CyberTheme.Muted,TextAnchor.MiddleCenter);
+            ActionButton(page,"Play chart","PLAY  >",872,726,660,122,()=>owner.Play(false),true);
         }
         public void ShowResults(SongEntry song,PlayResult result)
         {
-            Begin("Results page","03   /   SESSION REPORT");
-            Mono(page,"Result eyebrow","[ "+result.Mode+" ]",68,145,1050,25,14,CyberTheme.Cyan);
-            Label(page,"Result heading","SIGNAL COMPLETE",64,183,1100,76,58,true);
-            Label(page,"Result song",song.ShortTitle.ToUpperInvariant()+"  /  "+FormatTime(song.Duration),68,267,1090,37,25,false,CyberTheme.Muted);
-            Panel(page,"Score display",64,333,1000,211,CyberTheme.Panel,CyberTheme.Cyan);
-            Mono(page,"Score caption","TOTAL SCORE   //   SESSION DATA",90,355,850,26,14,CyberTheme.Cyan);
-            Label(page,"Final score",result.Score.ToString("D7"),81,380,940,160,113,true);
-            Panel(page,"Rank display",1090,183,446,361,CyberTheme.Panel,CyberTheme.Purple);
-            Mono(page,"Rank caption","PERFORMANCE RANK",1120,208,386,24,13,CyberTheme.Purple,TextAnchor.MiddleCenter);
-            Label(page,"Grade",result.Grade,1102,231,422,182,132,true,CyberTheme.Lime,TextAnchor.MiddleCenter);
-            Box(page,"Rank rail",1160,423,306,1,CyberTheme.Alpha(CyberTheme.Purple,.55f));
-            Label(page,"Accuracy",result.Accuracy.ToString("F2")+"%",1120,436,386,65,47,true,CyberTheme.Cyan,TextAnchor.MiddleCenter);
-            Mono(page,"Accuracy caption","ACCURACY",1120,509,386,20,11,CyberTheme.Muted,TextAnchor.MiddleCenter);
-            Mono(page,"Result disclaimer",result.Automatic?"AUTOPLAY PREVIEW / NOT A PLAYER RECORD":result.Practice?"PRACTICE SEGMENT / NOT A FULL-SONG RECORD":"SESSION ONLY / LOCAL RECORD SAVING IS NOT ENABLED",68,563,1470,25,13,CyberTheme.Muted);
-            Metric("PERFECT",result.Perfect.ToString("D3"),64,614,350,112,CyberTheme.Cyan);
-            Metric("GOOD",result.Good.ToString("D3"),438,614,350,112,CyberTheme.Lime);
-            Metric("MISS",result.Miss.ToString("D3"),812,614,350,112,CyberTheme.Pink);
-            Metric("MAX COMBO",result.MaxCombo+" / "+result.Total,1186,614,350,112,CyberTheme.Purple);
-            ActionButton(page,"Back to songs","<  MUSIC ARCHIVE",64,761,395,58,owner.ShowSongs);
-            ActionButton(page,"Retry","RECONNECT   /   PLAY AGAIN  >",1062,761,474,58,()=>owner.Play(result.Automatic),true);
+            Begin("Results page","TRACK COMPLETE");
+            Label(page,"Result mode",result.Automatic?"AUTOPLAY PREVIEW":result.Practice?"PRACTICE":"RESULT",75,151,1130,60,30,true,CyberTheme.Cyan);
+            var title=Label(page,"Result song",song.ShortTitle.ToUpperInvariant(),72,220,1038,103,58,true);Fit(title,32,58);
+            Label(page,"Score caption","SCORE",77,347,900,51,30,false,CyberTheme.Muted);
+            Label(page,"Final score",result.Score.ToString("D7"),68,387,1040,177,126,true);
+            Label(page,"Grade",result.Grade,1136,187,387,205,142,true,CyberTheme.Lime,TextAnchor.MiddleCenter);
+            Label(page,"Accuracy",result.Accuracy.ToString("F2")+"%",1127,411,410,87,57,true,CyberTheme.Cyan,TextAnchor.MiddleCenter);
+            Label(page,"Accuracy caption","ACCURACY",1134,497,394,51,27,false,CyberTheme.Muted,TextAnchor.MiddleCenter);
+            Metric("PERFECT",result.Perfect.ToString("D3"),72,578,346,CyberTheme.Cyan);
+            Metric("GOOD",result.Good.ToString("D3"),441,578,346,CyberTheme.Lime);
+            Metric("MISS",result.Miss.ToString("D3"),810,578,346,CyberTheme.Pink);
+            Metric("MAX COMBO",result.MaxCombo.ToString(),1179,578,346,CyberTheme.Purple);
+            ActionButton(page,"Back to songs","<  SONGS",72,737,408,116,owner.ShowSongs);
+            Label(page,"Result disclaimer",result.Automatic?"PREVIEW · NOT A RECORD":result.Practice?"PRACTICE · NOT A RECORD":"RESULT NOT SAVED",501,771,568,59,27,false,CyberTheme.Muted,TextAnchor.MiddleCenter);
+            ActionButton(page,"Retry","RETRY  >",1118,737,408,116,()=>owner.Play(result.Automatic),true);
         }
         public void ShowLoading(string title)
         {
-            Begin("Loading page","00   /   LOADING SIGNAL");
-            Artwork(page,1050,266,450,420);
-            Mono(page,"Loading tag","[ PREPARING AUDIO + CHART ]",83,276,850,28,16,CyberTheme.Cyan);
-            Label(page,"Loading heading","CONNECTING\nTO THE RHYTHM",77,319,978,205,67,true);
-            Label(page,"Loading track",title.ToUpperInvariant(),83,552,920,71,30,false,CyberTheme.Muted);
-            ActionButton(page,"Cancel loading","<  MUSIC ARCHIVE",83,699,400,65,owner.ShowSongs);
+            Begin("Loading page","GET READY");
+            Artwork(page,130,206,492,448);
+            Label(page,"Loading heading","FIND YOUR RHYTHM",738,271,807,111,59,true);
+            var t=Label(page,"Loading track",title.ToUpperInvariant(),742,427,782,140,44,false,CyberTheme.Muted);Fit(t,32,44);
+            ActionButton(page,"Cancel loading","CANCEL",80,734,400,120,owner.ShowSongs);
         }
         public void ShowError(string message)
         {
-            var panel=Panel(page,"Load error",528,255,1018,572,CyberTheme.Panel,CyberTheme.Pink);panel.raycastTarget=true;
-            Mono(panel.rectTransform,"Error code","[ SIGNAL INTERRUPTED ]",35,38,900,30,18,CyberTheme.Pink);
-            Label(panel.rectTransform,"Error heading","THIS TRACK COULD NOT LOAD",33,97,932,99,42,true);
-            Label(panel.rectTransform,"Error detail",message,35,218,932,201,23,false,CyberTheme.Muted);
-            Label(panel.rectTransform,"Error hint","Check its JSON / audio resource, or select another track.",35,459,932,65,23,false,CyberTheme.Text);
+            var shade=Box(page,"Error blocker",0,0,1600,900,new Color(0,0,0,.75f));shade.raycastTarget=true;
+            var p=Panel(page,"Load error",244,167,1112,597,CyberTheme.Panel,CyberTheme.Pink).rectTransform;
+            Label(p,"Error heading","COULDN'T LOAD THIS TRACK",51,49,1010,99,53,true);
+            var detail=Label(p,"Error detail",message,52,180,1008,176,34,false,CyberTheme.Muted);Fit(detail,26,34);
+            ActionButton(p,"Dismiss error","BACK TO SONGS",241,417,630,120,owner.ShowSongs,true);
         }
         public void Hide()=>canvas.gameObject.SetActive(false);
         public bool Invoke(string name)
         {
-            if(!buttons.TryGetValue(name,out var button)||!button.IsActive()||!button.interactable)return false;
-            button.onClick.Invoke();return true;
+            if(!buttons.TryGetValue(name,out var b)||!b.IsActive()||!b.interactable)return false;b.onClick.Invoke();return true;
         }
+        public bool ValidateTouchTargets()
+        {
+            foreach(var b in buttons.Values){var r=(RectTransform)b.transform;if(r.rect.width<MobileUiLayout.TouchTarget||r.rect.height<MobileUiLayout.TouchTarget)return false;}
+            return true;
+        }
+        public PagedSongCarousel Carousel=>carousel;
         public void UseCaptureCamera(Camera camera)
         {
-            canvas.renderMode=camera==null?RenderMode.ScreenSpaceOverlay:RenderMode.ScreenSpaceCamera;
-            canvas.worldCamera=camera;canvas.planeDistance=.5f;
-            if(camera!=null && pageFade!=null)pageFade.alpha=1; // Deterministic screenshot, without waiting for entry fade.
+            canvas.renderMode=camera==null?RenderMode.ScreenSpaceOverlay:RenderMode.ScreenSpaceCamera;canvas.worldCamera=camera;canvas.planeDistance=.5f;
+            if(camera!=null && pageFade!=null)pageFade.alpha=1;
         }
-        void Metric(string name,string value,float x,float y,float width,float height,Color color,string unit="")
+        void Metric(string name,string value,float x,float y,float width,Color color)
         {
-            var p=Panel(page,name+" panel",x,y,width,height,CyberTheme.Panel,color).rectTransform;
-            Mono(p,name+" label",name,16,12,width-32,21,12,CyberTheme.Muted);
-            var t=Label(p,name+" value",value,14,36,width-28,height-38,42,true,color);Fit(t,23,42);
-            if(unit.Length>0)Mono(p,"Unit",unit,width-65,53,50,22,12,CyberTheme.Muted,TextAnchor.MiddleRight);
+            var p=Panel(page,name+" panel",x,y,width,130,CyberTheme.Panel,color).rectTransform;
+            Label(p,name+" label",name,17,10,width-34,45,26,false,CyberTheme.Muted);
+            Label(p,name+" value",value,15,46,width-30,79,53,true,color);
         }
         static RectTransform Rect(string name,RectTransform parent,float x,float y,float width,float height)
         {
@@ -230,17 +205,14 @@ namespace GeometryRhythm
             var button=image.gameObject.AddComponent<Button>();button.targetGraphic=image;
             var colors=button.colors;colors.highlightedColor=new Color(.77f,.84f,1);colors.pressedColor=new Color(.55f,.69f,.85f);colors.fadeDuration=.1f;button.colors=colors;
             button.navigation=new Navigation{mode=Navigation.Mode.None};button.onClick.AddListener(()=>callback());buttons[name]=button;
-            if(caption.Length>0)Label(image.rectTransform,"Caption",caption,16,0,width-32,height,23,true,primary?CyberTheme.Background:CyberTheme.Text,TextAnchor.MiddleCenter);
+            if(caption.Length>0)Label(image.rectTransform,"Caption",caption,16,0,width-32,height,38,true,primary?CyberTheme.Background:CyberTheme.Text,TextAnchor.MiddleCenter);
             return button;
         }
         static void Artwork(RectTransform parent,float x,float y,float width,float height)
         {
             Rect("Signal core / original vector album art",parent,x,y,width,height).gameObject.AddComponent<MenuArtwork>().raycastTarget=false;
         }
-        void Scanner(float x,float y,float width,float height)
-        {
-            scan=Box(page,"Slow scanner / decorative",x,y,width,1,CyberTheme.Alpha(CyberTheme.Cyan,.15f)).rectTransform;scanStart=y;scanHeight=height;
-        }
+
         static string FormatTime(double time)=>((int)time/60).ToString("D2")+":"+((int)time%60).ToString("D2");
     }
 }

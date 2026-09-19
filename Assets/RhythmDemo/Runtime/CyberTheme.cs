@@ -6,15 +6,19 @@ namespace GeometryRhythm
     /// <summary>Presentation tokens only; no note rendering or judgement dependencies.</summary>
     public static class CyberTheme
     {
-        public static readonly Color Background=new Color(.023f,.039f,.070f);
-        public static readonly Color Panel=new Color(.044f,.080f,.125f);
-        public static readonly Color PanelLight=new Color(.070f,.130f,.185f);
-        public static readonly Color Cyan=new Color(.29f,.93f,.96f);
-        public static readonly Color Purple=new Color(.61f,.39f,1f);
+        public static readonly Color Background=new Color32(11,13,26,255);
+        public static readonly Color Panel=new Color32(19,23,42,255);
+        public static readonly Color PanelLight=new Color32(25,28,53,255);
+        public static readonly Color Primary=new Color32(255,45,155,255); // Hot magenta: actions and emphasis.
+        public static readonly Color Secondary=new Color32(41,140,255,255); // Electric blue: borders and secondary arcs.
+        // Legacy token names remain aliases so existing UI callers need no layout changes.
+        // These tokens are not used by the blue Tap / white Drag world-space materials.
+        public static readonly Color Cyan=Primary;
+        public static readonly Color Purple=Secondary;
         public static readonly Color Lime=new Color(.86f,.97f,.40f);
         public static readonly Color Pink=new Color(1f,.35f,.57f);
-        public static readonly Color Text=new Color(.90f,.95f,1f);
-        public static readonly Color Muted=new Color(.44f,.59f,.69f);
+        public static readonly Color Text=new Color32(242,245,255,255);
+        public static readonly Color Muted=new Color32(162,174,215,255);
         static Font bold,regular,mono;
         public static Font Bold => bold!=null?bold:bold=Load("Rajdhani-Bold");
         public static Font Regular => regular!=null?regular:regular=Load("Rajdhani-Medium");

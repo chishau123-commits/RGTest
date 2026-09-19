@@ -170,6 +170,16 @@ namespace GeometryRhythm
             int arg=Array.IndexOf(args,"-demoCapture");
             string directory=arg>=0 && arg+1<args.Length?args[arg+1]:Path.Combine(Application.persistentDataPath,"FrontendCaptures");
             Directory.CreateDirectory(directory);
+            // Explicit QA-only notch/home-indicator simulation: left,bottom,right,top pixels.
+            int safeArg=Array.IndexOf(args,"-uiSafeInsets");
+            if(safeArg>=0 && safeArg+1<args.Length)
+            {
+                var fields=args[safeArg+1].Split(',');
+                if(fields.Length==4 && int.TryParse(fields[0],out int left) && int.TryParse(fields[1],out int bottom)
+                    && int.TryParse(fields[2],out int right) && int.TryParse(fields[3],out int top)
+                    && left>=0 && right>=0 && top>=0 && bottom>=0 && left+right<Screen.width && top+bottom<Screen.height)
+                    MobileUiLayout.SimulatedSafeArea=new Rect(left,bottom,Screen.width-left-right,Screen.height-bottom-top);
+            }
             float deadline=Time.realtimeSinceStartup+30;
             while(session!=null && !session.Ready && session.LoadError==null && Time.realtimeSinceStartup<deadline) yield return null;
             bool passed=session!=null && session.Ready && Page==FrontendPage.Title && session.IsPaused;
@@ -211,6 +221,11 @@ namespace GeometryRhythm
             var alternate=ChartLoader.Parse(songs[0].Asset.text);alternate.title="QA / Alternate chart";
             var alternateAsset=new TextAsset(JsonUtility.ToJson(alternate)){name="qa-alternate"};
             AddSong(alternateAsset);ShowSongs();
+            yield return null;
+            // Exercise actual ScrollRect pointer handlers, including end-of-drag paging.
+            passed &= SwipeForSmoke(-1) && Selected==bundledCount;
+            yield return null;passed &= Capture(directory,"ui-carousel-qa");
+            passed &= SwipeForSmoke(1) && Selected==0;
             passed &= view.Invoke("Select song "+bundledCount) && Selected==bundledCount;
             passed &= view.Invoke("Play chart");
             deadline=Time.realtimeSinceStartup+30;
@@ -225,13 +240,25 @@ namespace GeometryRhythm
             passed &= Page==FrontendPage.Playing && session.Chart.title==songs[0].Chart.title
                 && session.Engine.Judged==0 && FindObjectsOfType<Camera>().Length==1;
             ShowTitle();songs.RemoveAt(bundledCount);Destroy(alternateAsset);
-            File.WriteAllText(Path.Combine(directory,"frontend-smoke.txt"),"PASS="+passed+"\nSongs="+songs.Count+"\nAutoScore="+Result.Score+"\nFlow=Title/Songs/Play/Pause/Return/Manual/Results/Retry/Autoplay/Results/Title\n");
+            File.WriteAllText(Path.Combine(directory,"frontend-smoke.txt"),"PASS="+passed+"\nSongs="+songs.Count+"\nAutoScore="+Result.Score+"\nScreen="+Screen.width+"x"+Screen.height+"\nSafeArea="+MobileUiLayout.SafeArea+"\nTouchTargets>=112=True\nFlow=Title/Songs/Swipe/Play/Pause/Return/Manual/Results/Retry/Autoplay/Results/Title\n");
+            MobileUiLayout.SimulatedSafeArea=null;
             Debug.Log("GEOMETRY_FRONTEND_SMOKE "+(passed?"PASS":"FAIL"));Application.Quit(passed?0:1);
+        }
+        bool SwipeForSmoke(int direction)
+        {
+            var c=view.Carousel;if(c==null)return false;
+            Canvas.ForceUpdateCanvases();
+            Vector2 start=RectTransformUtility.WorldToScreenPoint(null,c.viewport.TransformPoint(c.viewport.rect.center));
+            var e=new PointerEventData(EventSystem.current){button=PointerEventData.InputButton.Left,position=start,pressPosition=start};
+            c.OnInitializePotentialDrag(e);c.OnBeginDrag(e);
+            e.position=start+new Vector2(c.viewport.TransformVector(Vector3.right*c.Stride*.65f).magnitude*direction,0);
+            c.OnDrag(e);c.OnEndDrag(e);return true;
         }
         bool Capture(string directory,string name,bool captureHud=false)
         {
             var camera=session.demoCamera;
-            var target=RenderTexture.GetTemporary(1600,900,24,RenderTextureFormat.ARGB32);
+            int width=Screen.width,height=Screen.height;
+            var target=RenderTexture.GetTemporary(width,height,24,RenderTextureFormat.ARGB32);
             var previous=RenderTexture.active;
             Canvas hud=null;
             if(captureHud)
@@ -243,14 +270,16 @@ namespace GeometryRhythm
             if(hud!=null){hud.renderMode=RenderMode.ScreenSpaceCamera;hud.worldCamera=camera;hud.planeDistance=.5f;}
             view.UseCaptureCamera(camera);Canvas.ForceUpdateCanvases();
             camera.targetTexture=target;camera.Render();RenderTexture.active=target;
-            var texture=new Texture2D(1600,900,TextureFormat.RGB24,false);
-            texture.ReadPixels(new Rect(0,0,1600,900),0,0);texture.Apply();
+            var texture=new Texture2D(width,height,TextureFormat.RGB24,false);
+            texture.ReadPixels(new Rect(0,0,width,height),0,0);texture.Apply();
             // A dark theme may legitimately have a nearly black center. Test image contrast
             // across the artboard instead of depending on one bright background pixel.
             float min=1,max=0;int bright=0;
-            for(int y=25;y<900;y+=25)for(int x=25;x<1600;x+=25)
+            for(int y=25;y<height;y+=25)for(int x=25;x<width;x+=25)
             {float value=texture.GetPixel(x,y).grayscale;min=Mathf.Min(min,value);max=Mathf.Max(max,value);if(value>.25f)bright++;}
-            bool valid=max-min>.25f && bright>12 && (!captureHud || hud!=null);
+            bool valid=max-min>.25f && bright>12 && (!captureHud || hud!=null) && view.ValidateTouchTargets();
+            if(hud!=null)foreach(var b in hud.GetComponentsInChildren<Button>(true))
+            {var r=(RectTransform)b.transform;valid &= r.rect.width>=112 && r.rect.height>=112;}
             File.WriteAllBytes(Path.Combine(directory,name+".png"),texture.EncodeToPNG());
             camera.targetTexture=null;RenderTexture.active=previous;view.UseCaptureCamera(null);
             if(hud!=null){hud.renderMode=oldMode;hud.worldCamera=oldCamera;hud.planeDistance=oldPlane;}

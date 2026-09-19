@@ -91,6 +91,19 @@ namespace GeometryRhythm.Editor
             e.Advance(65,false);var missedResult=new PlayResult(e,false,false);
             Check(missedResult.Miss==chart.notes.Length && missedResult.Accuracy==0 && missedResult.Grade=="D","manual misses shown honestly");
             Check(new PlayResult(e,false,true).Practice,"practice result explicitly marked");
+            // Phone 16:9, phone 20:9 with a notch, and a 4:3 tablet. UI fitting is independent
+            // of world projection. Off-center safe areas must preserve every edge of the board.
+            var screens=new[]{new Vector2(1600,900),new Vector2(2400,1080),new Vector2(1200,900)};
+            var safeAreas=new[]{new Rect(0,0,1600,900),new Rect(110,44,2242,1004),new Rect(24,32,1152,836)};
+            for(int i=0;i<screens.Length;i++)
+            {
+                float scale=MobileUiLayout.FitScale(screens[i],screens[i],safeAreas[i],out var centre);
+                var board=new Rect(screens[i]*.5f+centre-new Vector2(800,450)*scale,new Vector2(1600,900)*scale);
+                Check(board.xMin>=safeAreas[i].xMin-.01f && board.xMax<=safeAreas[i].xMax+.01f,"mobile horizontal safe area "+i);
+                Check(board.yMin>=safeAreas[i].yMin-.01f && board.yMax<=safeAreas[i].yMax+.01f,"mobile vertical safe area "+i);
+                Check(Vector2.Distance(board.center,safeAreas[i].center)<.01f,"mobile off-centre inset "+i);
+            }
+            Check(MobileUiLayout.TouchTarget>=112,"mobile minimum design touch target");
             Debug.Log("GEOMETRY_VALIDATION_PASS "+checks+" checks");
         }
     }

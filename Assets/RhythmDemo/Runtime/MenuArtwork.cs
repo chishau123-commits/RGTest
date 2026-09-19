@@ -20,8 +20,10 @@ namespace GeometryRhythm
             v.Clear();var r=rectTransform.rect;center=r.center;scale=Mathf.Min(r.width,r.height)/500;
             for(int i=0;i<80;i++)
             {
-                int n=v.currentVertCount;v.AddVert(center,new Color(.06f,.33f,.39f,.52f),Vector2.zero);
-                v.AddVert(At(245,i*4.5f),new Color(.01f,.06f,.11f,0),Vector2.zero);v.AddVert(At(245,(i+1)*4.5f),new Color(.01f,.06f,.11f,0),Vector2.zero);v.AddTriangle(n,n+1,n+2);
+                // Disable the old cyan radial wash by color alone; retain every vertex and triangle.
+                // Gradients are reserved for the top/bottom decorative plates, not the album art.
+                int n=v.currentVertCount;v.AddVert(center,Color.clear,Vector2.zero);
+                v.AddVert(At(245,i*4.5f),Color.clear,Vector2.zero);v.AddVert(At(245,(i+1)*4.5f),Color.clear,Vector2.zero);v.AddTriangle(n,n+1,n+2);
             }
             var dim=CyberTheme.Alpha(CyberTheme.Cyan,.24f);
             Arc(v,224,1,0,360,dim);Arc(v,213,1,0,360,CyberTheme.Alpha(CyberTheme.Purple,.3f));

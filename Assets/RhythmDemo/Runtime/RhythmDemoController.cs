@@ -39,6 +39,7 @@ namespace GeometryRhythm
         AudioSource source;
         VisualLibrary library;
         StageVisuals stage;
+        AuthoredVisualDirector authoredVisuals;
         DemoHud hud;
         Transform notesRoot;
         Transform pathRoot;
@@ -107,6 +108,7 @@ namespace GeometryRhythm
             Spatial=new SpatialDirector(Chart,tempo);
             var worldRoot=new GameObject("Abstract world / real meshes").transform;worldRoot.SetParent(transform,false);
             stage=new StageVisuals(worldRoot,library,Spatial);
+            authoredVisuals=new AuthoredVisualDirector(worldRoot,Chart,tempo,Spatial,demoCamera);
             notesRoot=new GameObject("Note pool").transform;notesRoot.SetParent(transform,false);
             pathRoot=new GameObject("3D paths").transform;pathRoot.SetParent(transform,false);
             foreach(var path in Chart.paths) paths.Add(path.id,new PathVisual(path.id,pathRoot,library));
@@ -220,7 +222,8 @@ namespace GeometryRhythm
         { foreach(var contact in contacts) if(Inside(note,contact)) return true;return false; }
         public void EvaluateVisuals(double time)
         {
-            Spatial.EvaluateCamera(demoCamera,time);stage.Evaluate(time,tempo.BeatAtSeconds(time));
+            Spatial.EvaluateCamera(demoCamera,time);CameraMotionEvaluator.Apply(Chart,tempo,demoCamera,time);
+            stage.Evaluate(time,tempo.BeatAtSeconds(time));authoredVisuals?.Evaluate(time);
             foreach(var path in paths.Values) path.Evaluate(Spatial,time);
             foreach(var n in Engine.Notes)
             {
@@ -287,6 +290,7 @@ namespace GeometryRhythm
         void OnDestroy()
         {
             if(source!=null) { source.Stop();if(ownsAudio && source.clip!=null) Destroy(source.clip); }
+            authoredVisuals?.Dispose();
             library?.Dispose();
         }
         void OnGUI()

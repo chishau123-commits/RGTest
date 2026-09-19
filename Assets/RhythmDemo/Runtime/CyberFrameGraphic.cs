@@ -17,7 +17,7 @@ namespace GeometryRhythm
         }
         protected override void OnPopulateMesh(VertexHelper v)
         {
-            v.Clear();var faint=CyberTheme.Alpha(CyberTheme.Cyan,.008f);
+            v.Clear();var faint=CyberTheme.Alpha(CyberTheme.Secondary,.008f);
             for(int x=32;x<1600;x+=64)L(v,x,130,x,822,faint);
             for(int y=130;y<825;y+=64)L(v,32,y,1568,y,faint);
             Plate(v,0,0,575,15,CyberTheme.Purple,CyberTheme.Cyan);Plate(v,588,0,255,8,CyberTheme.Cyan,CyberTheme.Purple);
@@ -30,11 +30,12 @@ namespace GeometryRhythm
             Plate(v,1110,878,187,12,CyberTheme.Purple,CyberTheme.Cyan,true);
             Plate(v,855,900,100,31,CyberTheme.Purple,CyberTheme.Cyan,true);
             Plate(v,274,900,97,25,CyberTheme.Purple,CyberTheme.Purple,true);
-            L(v,32,116,1120,116,CyberTheme.Alpha(CyberTheme.Cyan,.32f));L(v,1120,116,1148,94,CyberTheme.Purple,2);L(v,1148,94,1568,94,CyberTheme.Purple,2);
+            // Only the original edge plates above interpolate colors. All other strokes stay solid blue.
+            L(v,32,116,1120,116,CyberTheme.Alpha(CyberTheme.Secondary,.32f));L(v,1120,116,1148,94,CyberTheme.Purple,2);L(v,1148,94,1568,94,CyberTheme.Purple,2);
             L(v,32,840,442,840,CyberTheme.Purple);L(v,442,840,458,856,CyberTheme.Purple);L(v,458,856,967,856,CyberTheme.Alpha(CyberTheme.Purple,.25f));
-            L(v,980,840,1568,840,CyberTheme.Alpha(CyberTheme.Cyan,.4f));
-            for(int i=0;i<12;i++){float y=290+i*24;L(v,20,y,i%3==0?31:25,y,CyberTheme.Alpha(CyberTheme.Cyan,.28f));L(v,1575,y,1580,y,CyberTheme.Alpha(CyberTheme.Purple,.4f));}
-            for(int i=0;i<6;i++)Plate(v,1440+i*18,111,14,5,CyberTheme.Cyan,CyberTheme.Cyan);
+            L(v,980,840,1568,840,CyberTheme.Alpha(CyberTheme.Secondary,.4f));
+            for(int i=0;i<12;i++){float y=290+i*24;L(v,20,y,i%3==0?31:25,y,CyberTheme.Alpha(CyberTheme.Secondary,.28f));L(v,1575,y,1580,y,CyberTheme.Alpha(CyberTheme.Purple,.4f));}
+            for(int i=0;i<6;i++)Plate(v,1440+i*18,111,14,5,CyberTheme.Secondary,CyberTheme.Secondary);
         }
     }
 }

@@ -7,4 +7,5 @@
 /Output/
 *.apk
 /.validation/
+/.validation-mobile/
 /Builds/

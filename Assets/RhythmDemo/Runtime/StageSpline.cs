@@ -19,6 +19,7 @@ namespace GeometryRhythm
 
         readonly StagePathData data;
         readonly Sample[] samples;
+        const int Subdivisions = 32;
         public bool IsCustom => samples != null;
         public float UnitsPerSecond => data == null ? 5 : data.unitsPerSecond;
         public float Length => samples == null ? float.PositiveInfinity : samples[samples.Length - 1].distance;
@@ -29,7 +30,7 @@ namespace GeometryRhythm
             if (data == null || data.points == null || data.points.Length < 2) return;
 
             int segmentCount = data.points.Length - 1;
-            const int subdivisions = 32;
+            const int subdivisions = Subdivisions;
             var positions = new List<Vector3>(segmentCount * subdivisions + 1);
             var rolls = new List<float>(segmentCount * subdivisions + 1);
             for (int segment = 0; segment < segmentCount; segment++)
@@ -113,6 +114,8 @@ namespace GeometryRhythm
             rotation = Quaternion.Slerp(samples[a].rotation, samples[b].rotation, mix);
         }
         public Vector3 Position(float distance) { Evaluate(distance, out var p, out _); return p; }
+        public float ControlPointDistance(int index)
+            => samples == null ? 0 : samples[Mathf.Clamp(index * Subdivisions, 0, samples.Length - 1)].distance;
         public Quaternion Rotation(float distance) { Evaluate(distance, out _, out var r); return r; }
         public Vector3 OffsetPoint(float distance, float x, float y)
         {
