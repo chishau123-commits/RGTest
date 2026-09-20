@@ -169,8 +169,13 @@ namespace GeometryRhythm
             {
                 if (data == null) continue;
                 // A backdrop with no readable file would paint the whole frame in its tint colour.
-                // Leave it as the world-space quad it used to be, which at least stays out of the way.
+                // Leave it as the world-space quad it used to be, which at least stays out of the way --
+                // but say so, because a silent fallback is indistinguishable from the feature not working.
                 bool backdrop = Backdrop.IsBackdrop(data) && !string.IsNullOrEmpty(data.sourcePath) && File.Exists(data.sourcePath);
+                if (Backdrop.IsBackdrop(data) && !backdrop)
+                    Debug.LogWarning("Scene object '" + data.id + "' asks for a full-frame backdrop but its source is unreadable: " +
+                        (string.IsNullOrEmpty(data.sourcePath) ? "(no sourcePath)" : data.sourcePath) +
+                        ". Falling back to a world-space quad.");
                 var go = CreateObject(data);
                 if (go == null) continue;
                 go.name = string.IsNullOrEmpty(data.name) ? data.id : data.name;
