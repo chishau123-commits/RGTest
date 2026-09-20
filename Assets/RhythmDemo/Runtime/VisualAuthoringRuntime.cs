@@ -169,10 +169,15 @@ namespace GeometryRhythm
             foreach (var data in chart.sceneObjects)
             {
                 if (data == null) continue;
-                // A backdrop with no readable file would paint the whole frame in its tint colour.
-                // Leave it as the world-space quad it used to be, which at least stays out of the way --
-                // but say so, because a silent fallback is indistinguishable from the feature not working.
-                bool backdrop = Backdrop.IsBackdrop(data) && !string.IsNullOrEmpty(data.sourcePath) && File.Exists(data.sourcePath);
+                // An image has to decode before it can be a backdrop, not merely exist: a null texture
+                // leaves the shader's black default covering the whole frame, which is worse than the
+                // world-space quad it replaces. Say so either way -- a silent fallback is
+                // indistinguishable from the feature not working at all.
+                Texture2D texture = data.kind == "image" ? LoadTexture(data.sourcePath) : null;
+                bool readable = data.kind == "image"
+                    ? texture != null
+                    : !string.IsNullOrEmpty(data.sourcePath) && File.Exists(data.sourcePath);
+                bool backdrop = Backdrop.IsBackdrop(data) && readable;
                 if (Backdrop.IsBackdrop(data) && !backdrop)
                     Debug.LogWarning("Scene object '" + data.id + "' asks for a full-frame backdrop but its source is unreadable: " +
                         (string.IsNullOrEmpty(data.sourcePath) ? "(no sourcePath)" : data.sourcePath) +
@@ -181,7 +186,7 @@ namespace GeometryRhythm
                 if (go == null) continue;
                 go.name = string.IsNullOrEmpty(data.name) ? data.id : data.name;
                 go.transform.SetParent(backdrop ? camera.transform : sceneRoot, false);
-                Material material = CreateMaterial(data, backdrop);
+                Material material = CreateMaterial(data, backdrop, texture);
                 if (backdrop) material.renderQueue = Backdrop.Queue + backdrops++;
                 foreach (var renderer in go.GetComponentsInChildren<Renderer>())
                 {
@@ -214,18 +219,23 @@ namespace GeometryRhythm
             var primitive = GameObject.CreatePrimitive(type); UnityEngine.Object.Destroy(primitive.GetComponent<Collider>()); return primitive;
         }
 
-        Material CreateMaterial(SceneObjectData data, bool backdrop)
+        Material CreateMaterial(SceneObjectData data, bool backdrop, Texture2D texture)
         {
             var material = Own(new Material(Shader.Find(backdrop ? "GeometryRhythm/Backdrop" :
                 data.kind == "image" ? "Unlit/Transparent" : data.kind == "video" ? "Unlit/Texture" : "Standard")));
             material.color = data.color;
             if (!backdrop && data.kind != "image") { material.SetFloat("_Glossiness", .25f); material.SetFloat("_Metallic", .12f); }
-            if (data.kind == "image" && !string.IsNullOrEmpty(data.sourcePath) && File.Exists(data.sourcePath))
-            {
-                var texture = Own(new Texture2D(2, 2, TextureFormat.RGBA32, false));
-                if (texture.LoadImage(File.ReadAllBytes(data.sourcePath))) material.mainTexture = texture;
-            }
+            if (texture != null) material.mainTexture = texture;
             return material;
+        }
+
+        /// <summary>Null when the path is empty, the file is missing, or the bytes are not an image
+        /// Unity can decode -- a `.webp`, or a truncated download.</summary>
+        Texture2D LoadTexture(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+            var texture = Own(new Texture2D(2, 2, TextureFormat.RGBA32, false));
+            return texture.LoadImage(File.ReadAllBytes(path)) ? texture : null;
         }
 
         void BuildEffects()
@@ -338,8 +348,14 @@ namespace GeometryRhythm
 
         void PlaceBackdrop(SceneRuntime scene)
         {
+            float sourceAspect = SourceAspect(scene);
+            // Nothing decoded yet. A video prepares again after every rebuild, and the chart editor
+            // rebuilds on each seek, so showing the shader's black default here would hide the whole
+            // scene behind a full-frame quad every time the playhead moves.
+            scene.transform.gameObject.SetActive(sourceAspect > 0);
+            if (sourceAspect <= 0) return;
             float distance = Backdrop.Distance(camera);
-            Vector2 scale = Backdrop.Scale(camera.fieldOfView, camera.aspect, SourceAspect(scene), distance);
+            Vector2 scale = Backdrop.Scale(camera.fieldOfView, camera.aspect, sourceAspect, distance);
             scene.transform.localPosition = new Vector3(0, 0, distance);
             scene.transform.localRotation = Quaternion.identity;
             scene.transform.localScale = new Vector3(scale.x, scale.y, 1);
@@ -365,18 +381,40 @@ namespace GeometryRhythm
             var video = scene.video;
             if (video == null || !video.isPrepared || video.length <= 0) return;
             double target = seconds % video.length;
-            // A backwards or large jump is a seek, not playback, however small the forward case is.
-            bool advancing = seconds > scene.videoTime && seconds - scene.videoTime < .5;
+            double step = seconds - scene.videoTime;
             scene.videoTime = seconds;
-            if (!advancing)
+            // Real playback advances chart time at roughly wall-clock rate. A menu's slow preview
+            // clock, a drag along the timeline, a pause and a restart do not, and running the decoder
+            // at 1x against any of those only earns a hard seek every few frames.
+            if (step > Time.unscaledDeltaTime * .5 && step < .5)
             {
-                if (video.isPlaying) video.Pause();
-                if (Math.Abs(video.time - target) > .05) video.time = target;
+                if (!video.isPlaying) video.Play();
+                // Well inside a frame at any sane rate, so this corrects drift without chasing it.
+                if (Math.Abs(video.time - target) > .25) video.time = target;
                 return;
             }
-            if (!video.isPlaying) video.Play();
-            // Well inside a frame at any sane rate, so this corrects drift without chasing it.
-            if (Math.Abs(video.time - target) > .25) video.time = target;
+            if (video.isPlaying) video.Pause();
+            if (Math.Abs(video.time - target) > .05) video.time = target;
+        }
+
+        /// <summary>Backdrop placement alone, for screens that show the world without advancing the
+        /// chart. The full Evaluate would also run the effect pass, leaving any clip that happens to
+        /// cover the preview time permanently lit behind the UI.</summary>
+        public void EvaluateBackdrops(double seconds)
+        {
+            foreach (var scene in scenes)
+            {
+                if (!scene.backdrop) continue;
+                PlaceBackdrop(scene); ScrubVideo(scene, seconds);
+            }
+        }
+
+        /// <summary>Whether this object is drawn as a backdrop right now. The chart flag alone does
+        /// not settle it: an object whose source turned out to be unreadable is demoted at build time.</summary>
+        public bool RendersAsBackdrop(SceneObjectData data)
+        {
+            foreach (var scene in scenes) if (scene.data == data) return scene.backdrop;
+            return false;
         }
 
         public bool TryPickSceneObject(Ray ray, out SceneObjectData picked)

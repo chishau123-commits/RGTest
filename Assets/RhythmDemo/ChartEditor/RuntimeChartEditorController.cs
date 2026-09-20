@@ -587,7 +587,7 @@ namespace GeometryRhythm.ChartEditor
         /// past it must not clear the selection: the inspector is the only way back to its toggle.</summary>
         bool BackdropSelected()
             => chart.sceneObjects != null && selectedSceneObject >= 0 && selectedSceneObject < chart.sceneObjects.Length
-                && Backdrop.IsBackdrop(chart.sceneObjects[selectedSceneObject]);
+                && authoredVisuals != null && authoredVisuals.RendersAsBackdrop(chart.sceneObjects[selectedSceneObject]);
         void SelectHandle(ChartEditorHandle marker)
         {
             mode = marker.mode;
