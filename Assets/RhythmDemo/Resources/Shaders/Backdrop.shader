@@ -1,6 +1,8 @@
 Shader "GeometryRhythm/Backdrop"
 {
-    Properties { _MainTex ("Texture", 2D) = "white" {} _Color ("Tint", Color) = (1,1,1,1) }
+    // Black, not white: a video only gets its texture once VideoPlayer delivers a frame, and a
+    // white default would flash the whole screen white until then.
+    Properties { _MainTex ("Texture", 2D) = "black" {} _Color ("Tint", Color) = (1,1,1,1) }
     SubShader
     {
         // A picture of a place, not a surface in one: the background queue draws it before any

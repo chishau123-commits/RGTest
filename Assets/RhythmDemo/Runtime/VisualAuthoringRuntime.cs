@@ -150,6 +150,11 @@ namespace GeometryRhythm
             UnityEngine.Object.Destroy(overlayObject.GetComponent<Collider>()); overlay = overlayObject.transform; overlay.SetParent(camera.transform, false);
             overlay.GetComponent<Renderer>().sharedMaterial = overlayMaterial; overlay.gameObject.SetActive(false);
             BuildScene(); BuildEffects();
+            // Place them once up front rather than waiting for the first Evaluate: the demo shows
+            // the 3D environment behind its menus without advancing the chart, and an unplaced
+            // backdrop would sit at the camera origin inside the near plane -- invisible, over a
+            // frame the clear below has already blacked out.
+            foreach (var scene in scenes) if (scene.backdrop) PlaceBackdrop(scene);
             // The skybox is drawn after the opaque pass and would cover a backdrop that writes no
             // depth, so a chart with one stops clearing to the sky and lets the picture do it.
             if (backdrops > 0) { camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black; }
