@@ -19,10 +19,14 @@ Infer the repo from `git remote -v`; `gh` does this automatically when run insid
 
 | 改动落在 | issue 发到 | 怎么调 |
 |---|---|---|
-| `bgv-chartgen/` 里 | 该子模块自己的仓库 | 在 `bgv-chartgen/` 里跑 `gh`，或显式 `--repo <子模块仓库>` |
-| 本仓库其它任何位置 | 这里 | 在仓库根目录跑 `gh` |
+| `bgv-chartgen/` 里 | `LingXuanYin/bgv-chartgen` | `gh issue create --repo LingXuanYin/bgv-chartgen ...` |
+| 本仓库其它任何位置 | `chishau123-commits/RGTest` | `gh issue create --repo chishau123-commits/RGTest ...` |
 
-`gh` 按 cwd 的 `git remote` 推断仓库，所以**在哪个目录里跑就发到哪个仓库**——跨仓库操作时务必显式写 `--repo`，别靠默认。
+两个仓库的 owner 不同（`LingXuanYin` 对 `chishau123-commits`），按主仓库类推会拼出一个不存在的名字。
+
+`gh` 解析仓库的顺序是：`--repo` > `GH_REPO` 环境变量 > `gh repo set-default` 存下的默认 > cwd 的 `git remote`。cwd 只是最后一档，环境里设过前面任何一项都会盖掉它——所以一律显式写 `--repo`。
+
+子模块仓库是私有的。没有访问权限时 `gh` 返回 404，与「仓库不存在」无法区分，拿不到「这是权限问题」这个信息。这时把 issue 发在 `chishau123-commits/RGTest`，标题加 `[chartgen]` 前缀，由有权限的人转过去。
 
 由谱面生成器那边发起、需要 Unity 侧改动的请求，发到**这里**，且只描述问题与方向，不提 PR：游戏侧的实现方式由本仓库决定。
 
