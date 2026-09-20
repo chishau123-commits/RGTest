@@ -13,6 +13,19 @@ Issues and specs for this repo live as GitHub issues in [`chishau123-commits/RGT
 
 Infer the repo from `git remote -v`; `gh` does this automatically when run inside a clone.
 
+## Scope: which tracker gets the issue
+
+这个 tracker 只收 RGTest 本身的 issue。`bgv-chartgen/` 是独立仓库，它的 spec 与工单发到自己的 issue 区。
+
+| 改动落在 | issue 发到 | 怎么调 |
+|---|---|---|
+| `bgv-chartgen/` 里 | 该子模块自己的仓库 | 在 `bgv-chartgen/` 里跑 `gh`，或显式 `--repo <子模块仓库>` |
+| 本仓库其它任何位置 | 这里 | 在仓库根目录跑 `gh` |
+
+`gh` 按 cwd 的 `git remote` 推断仓库，所以**在哪个目录里跑就发到哪个仓库**——跨仓库操作时务必显式写 `--repo`，别靠默认。
+
+由谱面生成器那边发起、需要 Unity 侧改动的请求，发到**这里**，且只描述问题与方向，不提 PR：游戏侧的实现方式由本仓库决定。
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
