@@ -1,0 +1,3 @@
+[submodule "bgv-chartgen"]
+	path = bgv-chartgen
+	url = https://github.com/LingXuanYin/bgv-chartgen.git
