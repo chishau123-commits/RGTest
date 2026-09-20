@@ -106,6 +106,7 @@ namespace GeometryRhythm
             public Material material;
             public VideoPlayer video;
             public bool backdrop;
+            public double videoTime;
         }
         sealed class EffectRuntime
         {
@@ -353,14 +354,29 @@ namespace GeometryRhythm
             return texture != null && texture.height > 0 ? texture.width / (float)texture.height : 0;
         }
 
-        /// <summary>Chart time drives the frame shown and the player never free-runs, so seek and
-        /// playback land on the same frame.</summary>
+        /// <summary>Chart time owns the clock, but the decoder has to be allowed to run: Prepare()
+        /// alone hands nothing to a MaterialOverride target, and seeking every frame never settles
+        /// into steady playback. So the player runs while the chart advances and is corrected only
+        /// when it actually drifts, and is pinned to an exact frame whenever the chart is not
+        /// moving -- paused, seeking, or restarting. Seek and playback land on the same frame
+        /// either way, which is what the deterministic-pose rule elsewhere in the runtime wants.</summary>
         static void ScrubVideo(SceneRuntime scene, double seconds)
         {
-            if (scene.video == null || !scene.video.isPrepared || scene.video.length <= 0) return;
-            double target = seconds % scene.video.length;
-            if (Math.Abs(scene.video.time - target) > .025) scene.video.time = target;
-            if (scene.video.isPlaying) scene.video.Pause();
+            var video = scene.video;
+            if (video == null || !video.isPrepared || video.length <= 0) return;
+            double target = seconds % video.length;
+            // A backwards or large jump is a seek, not playback, however small the forward case is.
+            bool advancing = seconds > scene.videoTime && seconds - scene.videoTime < .5;
+            scene.videoTime = seconds;
+            if (!advancing)
+            {
+                if (video.isPlaying) video.Pause();
+                if (Math.Abs(video.time - target) > .05) video.time = target;
+                return;
+            }
+            if (!video.isPlaying) video.Play();
+            // Well inside a frame at any sane rate, so this corrects drift without chasing it.
+            if (Math.Abs(video.time - target) > .25) video.time = target;
         }
 
         public bool TryPickSceneObject(Ray ray, out SceneObjectData picked)
