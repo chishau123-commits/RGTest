@@ -10,6 +10,7 @@ namespace GeometryRhythm.ChartEditor
     [Serializable] sealed class SceneAssetPreset
     {
         public string id, name, kind, sourcePath, animation;
+        public bool background;
         public Vector3 scale = Vector3.one;
         public Color color = Color.white;
         public float animationSpeed = 1, animationAmount = 1;
@@ -174,6 +175,14 @@ namespace GeometryRhythm.ChartEditor
             foreach (string a in new[] { "none", "float", "rotate", "pulse", "pendulum" })
                 if (GUILayout.Button(a, o.animation == a ? selectedButtonStyle : buttonStyle)) { RecordUndo(); o.animation = a; changed = true; }
             changed |= FloatField("Anim speed", ref o.animationSpeed); changed |= FloatField("Anim amount", ref o.animationAmount);
+            if (o.kind == "image" || o.kind == "video")
+            {
+                GUILayout.Space(7);
+                if (GUILayout.Button(o.background ? "Full-frame backdrop  ON" : "Full-frame backdrop  OFF",
+                    o.background ? selectedButtonStyle : buttonStyle))
+                { RecordUndo(); o.background = !o.background; changed = true; }
+                if (o.background) GUILayout.Label("Fills the frame from the camera; the transform above is unused.", smallStyle);
+            }
             if (changed) RebuildVisuals();
             GUILayout.Space(8);
             GUILayout.BeginHorizontal();
@@ -322,7 +331,7 @@ namespace GeometryRhythm.ChartEditor
         void AddSceneObject(SceneAssetPreset preset)
         {
             var o = new SceneObjectData { id = "scene-" + Guid.NewGuid().ToString("N"), name = preset.name, assetId = preset.id,
-                kind = preset.kind, sourcePath = preset.sourcePath, position = PlacementMarkerPosition, scale = preset.scale,
+                kind = preset.kind, sourcePath = preset.sourcePath, background = preset.background, position = PlacementMarkerPosition, scale = preset.scale,
                 color = preset.color, animation = preset.animation, animationSpeed = preset.animationSpeed, animationAmount = preset.animationAmount };
             Change(() => { var list = new List<SceneObjectData>(chart.sceneObjects) { o }; chart.sceneObjects = list.ToArray(); selectedSceneObject = chart.sceneObjects.Length - 1; }, "Scene asset placed");
         }
@@ -359,13 +368,14 @@ namespace GeometryRhythm.ChartEditor
         void SaveScenePreset(SceneObjectData source)
         {
             var preset = ScenePreset("user." + Guid.NewGuid().ToString("N"), source.name + " Preset", source.kind, source.scale, source.color, source.animation);
-            preset.sourcePath = source.sourcePath; preset.animationSpeed = source.animationSpeed; preset.animationAmount = source.animationAmount; sceneLibrary.Add(preset); selectedSceneAsset = sceneLibrary.Count - 1; SaveUserLibrary();
+            preset.sourcePath = source.sourcePath; preset.background = source.background;
+            preset.animationSpeed = source.animationSpeed; preset.animationAmount = source.animationAmount; sceneLibrary.Add(preset); selectedSceneAsset = sceneLibrary.Count - 1; SaveUserLibrary();
         }
         void UpdateScenePreset(SceneObjectData source)
         {
             EnsureVisualLibrary(); var preset = sceneLibrary[selectedSceneAsset];
             if (!preset.id.StartsWith("user.", StringComparison.Ordinal)) { SetStatus("Built-in assets are read-only; use Save as asset"); return; }
-            preset.name = source.name; preset.kind = source.kind; preset.sourcePath = source.sourcePath; preset.scale = source.scale; preset.color = source.color;
+            preset.name = source.name; preset.kind = source.kind; preset.sourcePath = source.sourcePath; preset.background = source.background; preset.scale = source.scale; preset.color = source.color;
             preset.animation = source.animation; preset.animationSpeed = source.animationSpeed; preset.animationAmount = source.animationAmount; SaveUserLibrary();
         }
         void SaveEffectPreset(EffectClipData source)
@@ -484,7 +494,7 @@ namespace GeometryRhythm.ChartEditor
             if (string.IsNullOrEmpty(path)) return;
             var preset = ScenePreset("user." + Guid.NewGuid().ToString("N"), Path.GetFileNameWithoutExtension(path), kind,
                 kind == "image" || kind == "video" ? new Vector3(12, 7, 1) : Vector3.one, Color.white, "none");
-            preset.sourcePath = path; sceneLibrary.Add(preset); selectedSceneAsset = sceneLibrary.Count - 1; SaveUserLibrary(); AddSceneObject(preset);
+            preset.sourcePath = path; preset.background = kind == "video"; sceneLibrary.Add(preset); selectedSceneAsset = sceneLibrary.Count - 1; SaveUserLibrary(); AddSceneObject(preset);
         }
 
         string ChooseVisualAsset(string title, string filter)

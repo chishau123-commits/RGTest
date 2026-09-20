@@ -110,6 +110,10 @@ namespace GeometryRhythm
         // cube, sphere, cylinder, plane, obj, image or video
         public string kind = "cube";
         public string sourcePath;
+        // Draws an image or video as a full-frame backdrop parented to the camera instead of a
+        // world-space quad: no fog, no depth write, always behind the notes. Absent means false,
+        // so every existing chart keeps its world-space placement.
+        public bool background;
         public Vector3 position;
         public Vector3 rotation;
         public Vector3 scale = Vector3.one;
