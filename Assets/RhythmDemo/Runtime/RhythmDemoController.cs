@@ -145,6 +145,7 @@ namespace GeometryRhythm
                 // Menus reuse the actual 3D environment, without advancing a chart or audio.
                 double preview=Math.Min(Duration*.4,8)+Math.Sin(Time.unscaledTimeAsDouble*.08)*1.2;
                 Spatial.EvaluateCamera(demoCamera,preview);stage.Evaluate(preview,tempo.BeatAtSeconds(preview));
+                authoredVisuals?.EvaluateBackdrops(preview);
                 return;
             }
             if(!smoke) ReadShortcuts();

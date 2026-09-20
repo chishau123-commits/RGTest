@@ -65,6 +65,37 @@ namespace GeometryRhythm
         }
     }
 
+    /// <summary>Full-frame backdrop placement for image and video scene objects. Kept apart from
+    /// the director so the fit can be exercised without building a scene.</summary>
+    public static class Backdrop
+    {
+        /// <summary>Clearance in front of the near plane: far enough not to be clipped by it,
+        /// close enough that nothing can ever get between the backdrop and the camera.</summary>
+        public const float NearClearance = .02f;
+        /// <summary>Background queue. Later backdrops are offset upwards so their draw order is
+        /// the order they appear in the chart rather than whatever the renderer decides.</summary>
+        public const int Queue = 1000;
+
+        public static bool IsBackdrop(SceneObjectData data)
+            => data != null && data.background && (data.kind == "image" || data.kind == "video");
+
+        public static float Distance(Camera camera) => camera.nearClipPlane + NearClearance;
+
+        /// <summary>Local scale of a unit quad parented to the camera that covers the whole frame
+        /// at <paramref name="distance"/>. The source keeps its own aspect ratio and the
+        /// overflowing axis is cropped rather than squashed; a source whose aspect is not known
+        /// yet falls back to the camera's, which fills the frame exactly.</summary>
+        public static Vector2 Scale(float verticalFieldOfView, float cameraAspect, float sourceAspect, float distance)
+        {
+            float frameHeight = 2 * distance * Mathf.Tan(verticalFieldOfView * Mathf.Deg2Rad * .5f);
+            float frameWidth = frameHeight * cameraAspect;
+            if (float.IsNaN(sourceAspect) || float.IsInfinity(sourceAspect) || sourceAspect <= 0) sourceAspect = cameraAspect;
+            return sourceAspect > cameraAspect
+                ? new Vector2(frameHeight * sourceAspect, frameHeight)
+                : new Vector2(frameWidth, frameWidth / sourceAspect);
+        }
+    }
+
     /// <summary>Builds user-authored scene objects and evaluates reusable effect clips.</summary>
     public sealed class AuthoredVisualDirector : IDisposable
     {
@@ -74,6 +105,8 @@ namespace GeometryRhythm
             public Transform transform;
             public Material material;
             public VideoPlayer video;
+            public bool backdrop;
+            public double videoTime;
         }
         sealed class EffectRuntime
         {
@@ -91,9 +124,11 @@ namespace GeometryRhythm
         readonly List<SceneRuntime> scenes = new List<SceneRuntime>();
         readonly List<EffectRuntime> effects = new List<EffectRuntime>();
         readonly List<UnityEngine.Object> owned = new List<UnityEngine.Object>();
-        readonly Color originalFog, originalAmbient;
+        readonly Color originalFog, originalAmbient, originalBackgroundColor;
         readonly float originalFogEnd;
         readonly bool originalFogEnabled;
+        readonly CameraClearFlags originalClearFlags;
+        int backdrops;
         readonly Light effectLight;
         readonly Transform overlay;
         readonly Material overlayMaterial;
@@ -106,6 +141,7 @@ namespace GeometryRhythm
             effectRoot = new GameObject("Reusable effect clips").transform; effectRoot.SetParent(root, false);
             originalFog = RenderSettings.fogColor; originalFogEnd = RenderSettings.fogEndDistance;
             originalFogEnabled = RenderSettings.fog; originalAmbient = RenderSettings.ambientLight;
+            originalClearFlags = camera.clearFlags; originalBackgroundColor = camera.backgroundColor;
             var lightObject = new GameObject("Effect light", typeof(Light)); lightObject.transform.SetParent(effectRoot, false);
             effectLight = lightObject.GetComponent<Light>(); effectLight.type = LightType.Directional; effectLight.shadows = LightShadows.None;
             effectLight.transform.rotation = Quaternion.Euler(30, -45, 0); effectLight.enabled = false;
@@ -115,6 +151,14 @@ namespace GeometryRhythm
             UnityEngine.Object.Destroy(overlayObject.GetComponent<Collider>()); overlay = overlayObject.transform; overlay.SetParent(camera.transform, false);
             overlay.GetComponent<Renderer>().sharedMaterial = overlayMaterial; overlay.gameObject.SetActive(false);
             BuildScene(); BuildEffects();
+            // Place them once up front rather than waiting for the first Evaluate: the demo shows
+            // the 3D environment behind its menus without advancing the chart, and an unplaced
+            // backdrop would sit at the camera origin inside the near plane -- invisible, over a
+            // frame the clear below has already blacked out.
+            foreach (var scene in scenes) if (scene.backdrop) PlaceBackdrop(scene);
+            // The skybox is drawn after the opaque pass and would cover a backdrop that writes no
+            // depth, so a chart with one stops clearing to the sky and lets the picture do it.
+            if (backdrops > 0) { camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black; }
         }
 
         T Own<T>(T value) where T : UnityEngine.Object { if (value != null) owned.Add(value); return value; }
@@ -125,12 +169,31 @@ namespace GeometryRhythm
             foreach (var data in chart.sceneObjects)
             {
                 if (data == null) continue;
+                // An image has to decode before it can be a backdrop, not merely exist: a null texture
+                // leaves the shader's black default covering the whole frame, which is worse than the
+                // world-space quad it replaces. Say so either way -- a silent fallback is
+                // indistinguishable from the feature not working at all.
+                Texture2D texture = data.kind == "image" ? LoadTexture(data.sourcePath) : null;
+                bool readable = data.kind == "image"
+                    ? texture != null
+                    : !string.IsNullOrEmpty(data.sourcePath) && File.Exists(data.sourcePath);
+                bool backdrop = Backdrop.IsBackdrop(data) && readable;
+                if (Backdrop.IsBackdrop(data) && !backdrop)
+                    Debug.LogWarning("Scene object '" + data.id + "' asks for a full-frame backdrop but its source is unreadable: " +
+                        (string.IsNullOrEmpty(data.sourcePath) ? "(no sourcePath)" : data.sourcePath) +
+                        ". Falling back to a world-space quad.");
                 var go = CreateObject(data);
                 if (go == null) continue;
                 go.name = string.IsNullOrEmpty(data.name) ? data.id : data.name;
-                go.transform.SetParent(sceneRoot, false);
-                Material material = CreateMaterial(data);
-                foreach (var renderer in go.GetComponentsInChildren<Renderer>()) renderer.sharedMaterial = material;
+                go.transform.SetParent(backdrop ? camera.transform : sceneRoot, false);
+                Material material = CreateMaterial(data, backdrop, texture);
+                if (backdrop) material.renderQueue = Backdrop.Queue + backdrops++;
+                foreach (var renderer in go.GetComponentsInChildren<Renderer>())
+                {
+                    renderer.sharedMaterial = material;
+                    if (!backdrop) continue;
+                    renderer.shadowCastingMode = ShadowCastingMode.Off; renderer.receiveShadows = false;
+                }
                 VideoPlayer video = null;
                 if (data.kind == "video" && !string.IsNullOrEmpty(data.sourcePath) && File.Exists(data.sourcePath))
                 {
@@ -139,7 +202,7 @@ namespace GeometryRhythm
                     video.targetMaterialProperty = "_MainTex"; video.audioOutputMode = VideoAudioOutputMode.None;
                     video.isLooping = true; video.playOnAwake = false; video.skipOnDrop = true; video.Prepare();
                 }
-                scenes.Add(new SceneRuntime { data = data, transform = go.transform, material = material, video = video });
+                scenes.Add(new SceneRuntime { data = data, transform = go.transform, material = material, video = video, backdrop = backdrop });
             }
         }
 
@@ -156,17 +219,23 @@ namespace GeometryRhythm
             var primitive = GameObject.CreatePrimitive(type); UnityEngine.Object.Destroy(primitive.GetComponent<Collider>()); return primitive;
         }
 
-        Material CreateMaterial(SceneObjectData data)
+        Material CreateMaterial(SceneObjectData data, bool backdrop, Texture2D texture)
         {
-            var material = Own(new Material(Shader.Find(data.kind == "image" ? "Unlit/Transparent" : data.kind == "video" ? "Unlit/Texture" : "Standard")));
+            var material = Own(new Material(Shader.Find(backdrop ? "GeometryRhythm/Backdrop" :
+                data.kind == "image" ? "Unlit/Transparent" : data.kind == "video" ? "Unlit/Texture" : "Standard")));
             material.color = data.color;
-            if (data.kind != "image") { material.SetFloat("_Glossiness", .25f); material.SetFloat("_Metallic", .12f); }
-            if (data.kind == "image" && !string.IsNullOrEmpty(data.sourcePath) && File.Exists(data.sourcePath))
-            {
-                var texture = Own(new Texture2D(2, 2, TextureFormat.RGBA32, false));
-                if (texture.LoadImage(File.ReadAllBytes(data.sourcePath))) material.mainTexture = texture;
-            }
+            if (!backdrop && data.kind != "image") { material.SetFloat("_Glossiness", .25f); material.SetFloat("_Metallic", .12f); }
+            if (texture != null) material.mainTexture = texture;
             return material;
+        }
+
+        /// <summary>Null when the path is empty, the file is missing, or the bytes are not an image
+        /// Unity can decode -- a `.webp`, or a truncated download.</summary>
+        Texture2D LoadTexture(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+            var texture = Own(new Texture2D(2, 2, TextureFormat.RGBA32, false));
+            return texture.LoadImage(File.ReadAllBytes(path)) ? texture : null;
         }
 
         void BuildEffects()
@@ -211,19 +280,18 @@ namespace GeometryRhythm
             foreach (var scene in scenes)
             {
                 var d = scene.data; float t = (float)seconds * d.animationSpeed;
-                scene.transform.localPosition = d.position;
-                scene.transform.localRotation = Quaternion.Euler(d.rotation);
-                scene.transform.localScale = d.scale;
-                if (d.animation == "float") scene.transform.localPosition += Vector3.up * Mathf.Sin(t * Mathf.PI * 2) * d.animationAmount;
-                else if (d.animation == "rotate") scene.transform.localRotation *= Quaternion.Euler(0, t * 45 * d.animationAmount, 0);
-                else if (d.animation == "pulse") scene.transform.localScale *= 1 + Mathf.Sin(t * Mathf.PI * 2) * .12f * d.animationAmount;
-                else if (d.animation == "pendulum") scene.transform.localRotation *= Quaternion.Euler(0, 0, Mathf.Sin(t * Mathf.PI * 2) * 20 * d.animationAmount);
-                if (scene.video != null && scene.video.isPrepared && scene.video.length > 0)
+                if (scene.backdrop) PlaceBackdrop(scene);
+                else
                 {
-                    double target = seconds % scene.video.length;
-                    if (Math.Abs(scene.video.time - target) > .025) scene.video.time = target;
-                    if (scene.video.isPlaying) scene.video.Pause();
+                    scene.transform.localPosition = d.position;
+                    scene.transform.localRotation = Quaternion.Euler(d.rotation);
+                    scene.transform.localScale = d.scale;
+                    if (d.animation == "float") scene.transform.localPosition += Vector3.up * Mathf.Sin(t * Mathf.PI * 2) * d.animationAmount;
+                    else if (d.animation == "rotate") scene.transform.localRotation *= Quaternion.Euler(0, t * 45 * d.animationAmount, 0);
+                    else if (d.animation == "pulse") scene.transform.localScale *= 1 + Mathf.Sin(t * Mathf.PI * 2) * .12f * d.animationAmount;
+                    else if (d.animation == "pendulum") scene.transform.localRotation *= Quaternion.Euler(0, 0, Mathf.Sin(t * Mathf.PI * 2) * 20 * d.animationAmount);
                 }
+                ScrubVideo(scene, seconds);
             }
             RenderSettings.fog = originalFogEnabled; RenderSettings.fogColor = originalFog;
             RenderSettings.fogEndDistance = originalFogEnd; RenderSettings.ambientLight = originalAmbient;
@@ -278,12 +346,83 @@ namespace GeometryRhythm
             }
         }
 
+        void PlaceBackdrop(SceneRuntime scene)
+        {
+            float sourceAspect = SourceAspect(scene);
+            // Nothing decoded yet. A video prepares again after every rebuild, and the chart editor
+            // rebuilds on each seek, so showing the shader's black default here would hide the whole
+            // scene behind a full-frame quad every time the playhead moves.
+            scene.transform.gameObject.SetActive(sourceAspect > 0);
+            if (sourceAspect <= 0) return;
+            float distance = Backdrop.Distance(camera);
+            Vector2 scale = Backdrop.Scale(camera.fieldOfView, camera.aspect, sourceAspect, distance);
+            scene.transform.localPosition = new Vector3(0, 0, distance);
+            scene.transform.localRotation = Quaternion.identity;
+            scene.transform.localScale = new Vector3(scale.x, scale.y, 1);
+        }
+
+        /// <summary>Zero until the source is readable; a video reports its size only once prepared.</summary>
+        static float SourceAspect(SceneRuntime scene)
+        {
+            if (scene.video != null && scene.video.isPrepared && scene.video.height > 0)
+                return scene.video.width / (float)scene.video.height;
+            var texture = scene.material == null ? null : scene.material.mainTexture;
+            return texture != null && texture.height > 0 ? texture.width / (float)texture.height : 0;
+        }
+
+        /// <summary>Chart time owns the clock, but the decoder has to be allowed to run: Prepare()
+        /// alone hands nothing to a MaterialOverride target, and seeking every frame never settles
+        /// into steady playback. So the player runs while the chart advances and is corrected only
+        /// when it actually drifts, and is pinned to an exact frame whenever the chart is not
+        /// moving -- paused, seeking, or restarting. Seek and playback land on the same frame
+        /// either way, which is what the deterministic-pose rule elsewhere in the runtime wants.</summary>
+        static void ScrubVideo(SceneRuntime scene, double seconds)
+        {
+            var video = scene.video;
+            if (video == null || !video.isPrepared || video.length <= 0) return;
+            double target = seconds % video.length;
+            double step = seconds - scene.videoTime;
+            scene.videoTime = seconds;
+            // Real playback advances chart time at roughly wall-clock rate. A menu's slow preview
+            // clock, a drag along the timeline, a pause and a restart do not, and running the decoder
+            // at 1x against any of those only earns a hard seek every few frames.
+            if (step > Time.unscaledDeltaTime * .5 && step < .5)
+            {
+                if (!video.isPlaying) video.Play();
+                // Well inside a frame at any sane rate, so this corrects drift without chasing it.
+                if (Math.Abs(video.time - target) > .25) video.time = target;
+                return;
+            }
+            if (video.isPlaying) video.Pause();
+            if (Math.Abs(video.time - target) > .05) video.time = target;
+        }
+
+        /// <summary>Backdrop placement alone, for screens that show the world without advancing the
+        /// chart. The full Evaluate would also run the effect pass, leaving any clip that happens to
+        /// cover the preview time permanently lit behind the UI.</summary>
+        public void EvaluateBackdrops(double seconds)
+        {
+            foreach (var scene in scenes)
+            {
+                if (!scene.backdrop) continue;
+                PlaceBackdrop(scene); ScrubVideo(scene, seconds);
+            }
+        }
+
+        /// <summary>Whether this object is drawn as a backdrop right now. The chart flag alone does
+        /// not settle it: an object whose source turned out to be unreadable is demoted at build time.</summary>
+        public bool RendersAsBackdrop(SceneObjectData data)
+        {
+            foreach (var scene in scenes) if (scene.data == data) return scene.backdrop;
+            return false;
+        }
+
         public bool TryPickSceneObject(Ray ray, out SceneObjectData picked)
         {
             picked = null; float nearest = float.PositiveInfinity;
             foreach (var scene in scenes)
             {
-                if (scene.transform == null || !scene.transform.gameObject.activeInHierarchy) continue;
+                if (scene.backdrop || scene.transform == null || !scene.transform.gameObject.activeInHierarchy) continue;
                 bool hit = false; float distance = float.PositiveInfinity;
                 foreach (var renderer in scene.transform.GetComponentsInChildren<Renderer>())
                 {
@@ -337,7 +476,10 @@ namespace GeometryRhythm
         {
             RenderSettings.fog = originalFogEnabled; RenderSettings.fogColor = originalFog;
             RenderSettings.fogEndDistance = originalFogEnd; RenderSettings.ambientLight = originalAmbient;
+            if (camera != null) { camera.clearFlags = originalClearFlags; camera.backgroundColor = originalBackgroundColor; }
             if (overlay != null) UnityEngine.Object.Destroy(overlay.gameObject);
+            // Backdrops hang off the camera rather than off root, so root alone does not take them down.
+            foreach (var scene in scenes) if (scene.backdrop && scene.transform != null) UnityEngine.Object.Destroy(scene.transform.gameObject);
             if (root != null) UnityEngine.Object.Destroy(root.gameObject);
             foreach (var item in owned) if (item != null) UnityEngine.Object.Destroy(item);
         }

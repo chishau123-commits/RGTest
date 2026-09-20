@@ -110,6 +110,10 @@ namespace GeometryRhythm
         // cube, sphere, cylinder, plane, obj, image or video
         public string kind = "cube";
         public string sourcePath;
+        // Draws an image or video as a full-frame backdrop parented to the camera instead of a
+        // world-space quad: no fog, no depth write, always behind the notes. Absent means false,
+        // so every existing chart keeps its world-space placement.
+        public bool background;
         public Vector3 position;
         public Vector3 rotation;
         public Vector3 scale = Vector3.one;
@@ -211,13 +215,17 @@ namespace GeometryRhythm
             Require(Finite(c.approachSeconds) && c.approachSeconds >= 1 && c.approachSeconds <= 10,
                 "approachSeconds must be in [1,10]");
             Require(Finite(c.audioOffsetSeconds), "invalid audio offset");
+            // Speed is read on every route, custom or fallback: StageSpline.UnitsPerSecond reads
+            // the field rather than the samples, and SpatialDirector multiplies it into every
+            // position. So it is validated whenever the object exists, empty points or not.
+            if (c.stagePath != null)
+                Require(Finite(c.stagePath.unitsPerSecond) && c.stagePath.unitsPerSecond > 0 &&
+                    c.stagePath.unitsPerSecond <= 100, "invalid stage speed");
             // JsonUtility may instantiate a missing nested object. No points therefore means
             // a legacy chart; a non-empty custom path must still be structurally complete.
             if (c.stagePath != null && c.stagePath.points != null && c.stagePath.points.Length > 0)
             {
-                Require(Finite(c.stagePath.unitsPerSecond) && c.stagePath.unitsPerSecond > 0 &&
-                    c.stagePath.unitsPerSecond <= 100, "invalid stage speed");
-                Require(c.stagePath.points != null && c.stagePath.points.Length >= 2, "stage path needs at least two points");
+                Require(c.stagePath.points.Length >= 2, "stage path needs at least two points");
                 foreach (var p in c.stagePath.points)
                     Require(Finite(p.x) && Finite(p.y) && Finite(p.z) && Finite(p.roll), "invalid stage point");
             }

@@ -580,9 +580,14 @@ namespace GeometryRhythm.ChartEditor
                 if (assetIndex >= 0) selectedSceneAsset = assetIndex;
                 draggingHandle = false; SetStatus("Selected scene object: " + picked.name); UpdateViewportRect(); return selectedSceneObject >= 0;
             }
-            if (clearWhenMiss) { selectedSceneObject = -1; draggingHandle = false; UpdateViewportRect(); }
+            if (clearWhenMiss && !BackdropSelected()) { selectedSceneObject = -1; draggingHandle = false; UpdateViewportRect(); }
             return false;
         }
+        /// <summary>A backdrop fills the frame and is excluded from picking on purpose, so clicking
+        /// past it must not clear the selection: the inspector is the only way back to its toggle.</summary>
+        bool BackdropSelected()
+            => chart.sceneObjects != null && selectedSceneObject >= 0 && selectedSceneObject < chart.sceneObjects.Length
+                && authoredVisuals != null && authoredVisuals.RendersAsBackdrop(chart.sceneObjects[selectedSceneObject]);
         void SelectHandle(ChartEditorHandle marker)
         {
             mode = marker.mode;
