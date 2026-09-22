@@ -13,7 +13,7 @@ namespace GeometryRhythm.Editor
         const string ScenePath = "Assets/RhythmDemo/Scenes/GeometryChartStudio.unity";
         const string BuildDirectory = "Builds/GeometryChartStudio";
 
-        [MenuItem("Geometry Rhythm/Chart Studio/Create or Open Desktop Editor")]
+        [MenuItem("Rhythm Hacker/Chart Studio/Create or Open Desktop Editor")]
         public static void CreateOrOpen()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
@@ -21,7 +21,7 @@ namespace GeometryRhythm.Editor
             EditorSceneManager.OpenScene(ScenePath);
         }
 
-        [MenuItem("Geometry Rhythm/Chart Studio/Build Windows Editor")]
+        [MenuItem("Rhythm Hacker/Chart Studio/Build Windows Editor")]
         public static void BuildWindows()
         {
             CreateScene();

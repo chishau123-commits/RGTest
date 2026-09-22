@@ -15,11 +15,23 @@ namespace GeometryRhythm
         public static readonly Color Pink=new Color(1f,.35f,.57f);
         public static readonly Color Text=new Color(.90f,.95f,1f);
         public static readonly Color Muted=new Color(.44f,.59f,.69f);
-        static Font bold,regular,mono;
+        static Font bold,regular,mono,chinese,futureTitle;
         public static Font Bold => bold!=null?bold:bold=Load("Rajdhani-Bold");
         public static Font Regular => regular!=null?regular:regular=Load("Rajdhani-Medium");
         public static Font Mono => mono!=null?mono:mono=Load("ShareTechMono-Regular");
+        public static Font Chinese => chinese!=null?chinese:chinese=LoadChinese();
+        public static Font FutureTitle => futureTitle!=null?futureTitle:futureTitle=LoadFutureTitle();
         static Font Load(string name) => Resources.Load<Font>("Fonts/"+name)??Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        static Font LoadChinese()
+        {
+            string[] preferred={"Microsoft YaHei UI","Microsoft YaHei","PingFang SC","Noto Sans CJK SC","Source Han Sans SC","SimHei","Arial Unicode MS"};
+            return Font.CreateDynamicFontFromOSFont(preferred,32)??Bold;
+        }
+        static Font LoadFutureTitle()
+        {
+            string[] preferred={"Agency FB","Bahnschrift","Michroma","Orbitron","Audiowide","Rajdhani"};
+            return Font.CreateDynamicFontFromOSFont(preferred,52)??Bold;
+        }
         public static Color Alpha(Color c,float alpha) {c.a=alpha;return c;}
         // Local canvas-space mesh helpers retain crisp edges at different resolutions.
         public static void Quad(VertexHelper v,Vector2 a,Vector2 b,Vector2 c,Vector2 d,Color color)

@@ -7,9 +7,9 @@
 ### Unity 编辑器
 
 1. 等待 Unity 导入 `Assets/RhythmDemo` 并完成编译。
-2. 打开 `Assets/RhythmDemo/Scenes/GeometryRhythmDemo.unity`。也可通过菜单 **Geometry Rhythm → Open Demo Scene** 打开。
+2. 打开 `Assets/RhythmDemo/Scenes/GeometryRhythmDemo.unity`。也可通过菜单 **Rhythm Hacker → Open Demo Scene** 打开。
 3. Game 视图分辨率菜单取消 **Low Resolution Aspect Ratios**，选择 **Full HD (1920×1080)**。不要只选宽高比并打开低分辨率预览。
-4. 按 Play 先进入标题页，点击 **ENTER MUSIC ARCHIVE** 打开真实 JSON 歌曲列表。
+4. 按 Play 先进入标题页，点击 **ENTER GAME** 进入主界面，再点击 **ENTER!** 打开真实 JSON 歌曲列表。
 5. **PLAY CHART** 开始手动游玩，**AUTOPLAY / PREVIEW** 开始自动演示；歌曲结束自动进入结算。游玩时右下角模式按钮仍可切换模式并重开。
 
 三页 UI、页面流程、游戏改名、新曲接入和结算规则见 [前端 UI 说明](FrontendUI.md)。
@@ -18,7 +18,7 @@
 
 ### Windows 可执行版本
 
-运行 `Builds/GeometryRhythmDemo/GeometryRhythmDemo.exe`。发布给别人时需一起拷贝整个目录，不能只拷贝 exe。
+运行 `Builds/RhythmHacker/RhythmHacker.exe`。发布给别人时需一起拷贝整个目录，不能只拷贝 exe。
 
 | 操作 | 功能 |
 | --- | --- |
@@ -122,7 +122,7 @@ Docs/
 外部 Windows 谱面可通过命令行加载：
 
 ```powershell
-.\GeometryRhythmDemo.exe -demoChart "D:\Charts\my-chart.json"
+.\RhythmHacker.exe -demoChart "D:\Charts\my-chart.json"
 ```
 
 这是桌面文件入口；移动端文件选择和导入 UI 尚未实现。编辑器也可在启动组件的 `Chart Override` 中指定另一个 JSON TextAsset。
@@ -253,14 +253,14 @@ Note 对象池按实际谱面的预读窗口峰值预热；音符复用共享网
 
 ## 8. 构建与检查
 
-在 Unity 菜单选择 **Geometry Rhythm → Validate Chart and Rules** 可运行不依赖额外测试包的规则检查。
+在 Unity 菜单选择 **Rhythm Hacker → Validate Chart and Rules** 可运行不依赖额外测试包的规则检查。
 
 批处理入口：`GeometryRhythm.Editor.DemoBuildTools.ValidateAndBuild`。它会创建 Demo 场景、运行检查并构建 Windows 非开发版。请在独立验证副本中执行，避免与已经打开的 Unity 项目争用。
 
 独立播放器可执行真实渲染截图与自动判定自检：
 
 ```powershell
-.\GeometryRhythmDemo.exe -demoSmoke -demoCapture "D:\Captures" -screen-width 1600 -screen-height 900 -screen-fullscreen 0 -logFile "D:\Captures\player.log"
+.\RhythmHacker.exe -demoSmoke -demoCapture "D:\Captures" -screen-width 1600 -screen-height 900 -screen-fullscreen 0 -logFile "D:\Captures\player.log"
 ```
 
 它会保存六个时间点的 PNG 及 player-smoke.txt，随后退出。截图包含实际运行的三维场景和 HUD。

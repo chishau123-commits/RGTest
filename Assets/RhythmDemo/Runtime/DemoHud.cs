@@ -29,7 +29,7 @@ namespace GeometryRhythm
             FixedBox("Cyan top rail",new Vector2(0,-2),new Vector2(690,3),new Vector2(0,1),CyberTheme.Cyan);
             FixedBox("Violet top rail",new Vector2(0,-2),new Vector2(690,3),Vector2.one,CyberTheme.Purple);
             pauseLabel=Button("Pause",new Vector2(54,-44),new Vector2(64,58),new Vector2(0,1),"II",pause,30);
-            Label("System label",new Vector2(110,-24),new Vector2(400,24),new Vector2(0,1),"G/R  //  SIGNAL IN PROGRESS",14,TextAnchor.MiddleLeft,null,CyberTheme.Cyan,true);
+            Label("System label",new Vector2(110,-24),new Vector2(400,24),new Vector2(0,1),"R/H  //  SIGNAL IN PROGRESS",14,TextAnchor.MiddleLeft,null,CyberTheme.Cyan,true);
             var track=Box("Song progress",new Vector2(.072f,1),new Vector2(.405f,1),CyberTheme.PanelLight);
             track.rectTransform.pivot=new Vector2(.5f,1);track.rectTransform.anchoredPosition=new Vector2(0,-57);track.rectTransform.sizeDelta=new Vector2(0,4);
             fill=Box("Played",Vector2.zero,Vector2.one,CyberTheme.Cyan,track.rectTransform);
@@ -43,7 +43,7 @@ namespace GeometryRhythm
             var footer=Box("Status dock",Vector2.zero,new Vector2(1,0),CyberTheme.Alpha(CyberTheme.Background,.96f));
             footer.rectTransform.pivot=new Vector2(.5f,0);footer.rectTransform.sizeDelta=new Vector2(0,64);
             FixedBox("Dock accent",new Vector2(0,64),new Vector2(1020,2),Vector2.zero,CyberTheme.Purple);
-            status=Label("Section",new Vector2(30,44),new Vector2(920,26),Vector2.zero,"GEOMETRY / DEMO",18,TextAnchor.MiddleLeft,null,CyberTheme.Cyan);
+            status=Label("Section",new Vector2(30,44),new Vector2(920,26),Vector2.zero,"RHYTHM HACKER / DEMO",18,TextAnchor.MiddleLeft,null,CyberTheme.Cyan);
             clock=Label("Clock",new Vector2(30,20),new Vector2(1000,23),Vector2.zero,"",12,TextAnchor.MiddleLeft,null,CyberTheme.Muted,true);
             mode=Button("Mode",new Vector2(-350,32),new Vector2(146,40),new Vector2(1,0),"AUTO / VIEW",automatic,17);
             soundLabel=Button("Audio",new Vector2(-199,32),new Vector2(135,40),new Vector2(1,0),"SOUND ON",mute,17);
@@ -108,7 +108,7 @@ namespace GeometryRhythm
         {
             combo.text=engine.Combo.ToString();score.text=engine.Score.ToString("D7");accuracy.text=engine.Accuracy.ToString("F2")+"%";
             fill.rectTransform.anchorMax=new Vector2((float)(time/duration),1);
-            status.text="GEOMETRY  /  "+section.name+"  /  "+section.placements.Length.ToString("D2")+" PATHS";
+            status.text="RHYTHM HACKER  /  "+section.name+"  /  "+section.placements.Length.ToString("D2")+" PATHS";
             clock.text=FormatTime(time)+" / "+FormatTime(duration)+"   "+(automatic?"AUTOPLAY PREVIEW":"MANUAL PLAY")+"   SPACE: PAUSE / A: MODE";
             mode.text=automatic?"AUTO / VIEW":"MANUAL / PLAY";soundLabel.text=muted?"SOUND OFF":"SOUND ON";pauseLabel.text=paused?">":"II";
             if(time>feedbackUntil)feedback.text="";

@@ -1,0 +1,366 @@
+{
+    "version": 2,
+    "storyId": "arknights-sealed-recording-room",
+    "title": "尘封密室·录音记录",
+    "author": "Rhythm Hacker",
+    "assetRoot": "Assets/RhythmDemo/Resources/Story",
+    "sceneMusicResource": "Music/story-main",
+    "characters": [
+        {
+            "id": "amiya",
+            "displayName": "阿米娅",
+            "colorHex": "#69A7FF",
+            "expressions": [
+                {
+                    "id": "default",
+                    "label": "常态",
+                    "assetPath": "Assets/RhythmDemo/Resources/Story/Characters/amiya/default.png",
+                    "anchorX": 0.5,
+                    "anchorY": 0.0
+                }
+            ]
+        },
+        {
+            "id": "closure",
+            "displayName": "可露希尔",
+            "colorHex": "#E34B55",
+            "expressions": [
+                {
+                    "id": "default",
+                    "label": "常态",
+                    "assetPath": "Assets/RhythmDemo/Resources/Story/Characters/closure/default.png",
+                    "anchorX": 0.5,
+                    "anchorY": 0.0
+                }
+            ]
+        },
+        {
+            "id": "rhythm-hacker",
+            "displayName": "节奏骇客",
+            "colorHex": "#63E6BE",
+            "expressions": [
+                {
+                    "id": "voice",
+                    "label": "通讯语音",
+                    "assetPath": "",
+                    "anchorX": 0.5,
+                    "anchorY": 0.0
+                }
+            ]
+        }
+    ],
+    "backgrounds": [
+        {
+            "id": "sealed-recording-room",
+            "label": "尘封密室·录音室",
+            "assetPath": "Assets/RhythmDemo/Resources/Story/Backgrounds/sealed-recording-room-2.png"
+        }
+    ],
+    "nodes": [
+        {
+            "id": "bg-recording-room",
+            "kind": 2,
+            "title": "进入录音室",
+            "text": "",
+            "speakerId": "",
+            "expressionId": "",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "sealed-recording-room",
+            "transition": "fade",
+            "castIds": [
+                "amiya",
+                "closure"
+            ],
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "amiya-room",
+            "kind": 0,
+            "title": "阿米娅说明现场",
+            "text": "这里就是被封存的录音室。隔音层已经失效，但残留信号还在循环。",
+            "speakerId": "amiya",
+            "expressionId": "default",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "closure-noise",
+            "kind": 0,
+            "title": "可露希尔接入通讯",
+            "text": "检测到了吗？别被那台老古董骗了，它的磁带机比罗德岛食堂还吵。",
+            "speakerId": "closure",
+            "expressionId": "default",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "hacker-waveform",
+            "kind": 0,
+            "title": "节奏骇客分析波形",
+            "text": "底噪里有三段重复波形。不是录音损坏，是有人在删除前做了标记。",
+            "speakerId": "rhythm-hacker",
+            "expressionId": "voice",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "amiya-medical-team",
+            "kind": 0,
+            "title": "阿米娅提起医疗队",
+            "text": "能恢复吗？这间房曾属于一支没有登记在册的感染者医疗队。",
+            "speakerId": "amiya",
+            "expressionId": "default",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "closure-cache",
+            "kind": 0,
+            "title": "可露希尔给出缓存",
+            "text": "接口还能接通。但缓存区已经老化，我没有把握能把全部数据带出来。",
+            "speakerId": "closure",
+            "expressionId": "default",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "amiya-device",
+            "kind": 0,
+            "title": "阿米娅检查设备",
+            "text": "这台设备没有连接罗德岛内网，却还在持续接收一段重复的求救频率。像是有人故意留下了一条回家的路。",
+            "speakerId": "amiya",
+            "expressionId": "default",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "closure-timestamp",
+            "kind": 0,
+            "title": "可露希尔发现时间戳",
+            "text": "我看了时间戳，比档案室那场火灾早了七分钟。也就是说，有人在事故前就知道它会发生，只是没来得及阻止。",
+            "speakerId": "closure",
+            "expressionId": "default",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "hacker-split",
+            "kind": 0,
+            "title": "节奏骇客拆解记录",
+            "text": "信号被拆成了三段，每一段都藏着一小段旋律。只要把节拍重新对齐，应该能还原完整的记录。",
+            "speakerId": "rhythm-hacker",
+            "expressionId": "voice",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "amiya-consent",
+            "kind": 0,
+            "title": "阿米娅确认原则",
+            "text": "我们只能恢复一次。无论结果是什么，都不要让录音室里的人再次被当成没有名字的数据。",
+            "speakerId": "amiya",
+            "expressionId": "default",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "closure-cache-limit",
+            "kind": 0,
+            "title": "可露希尔提示时限",
+            "text": "缓存只能保存十分钟。等我开始读取以后，别让通讯窗中断，不然我们连最后一层底噪都留不住。",
+            "speakerId": "closure",
+            "expressionId": "default",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "recording-destination",
+            "kind": 1,
+            "title": "决定录音去向",
+            "text": "节奏骇客，准备怎么处理这段录音？",
+            "speakerId": "",
+            "expressionId": "",
+            "textVariants": [],
+            "choices": [
+                {
+                    "id": "send-to-rhodes",
+                    "text": "交给罗德岛归档",
+                    "variable": "记录去向",
+                    "value": "移交罗德岛"
+                },
+                {
+                    "id": "seal-on-site",
+                    "text": "先封存，保留现场",
+                    "variable": "记录去向",
+                    "value": "封存现场"
+                }
+            ],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "amiya-after-choice",
+            "kind": 0,
+            "title": "阿米娅回应选择",
+            "text": "无论选择哪一种，我们都不能让这段记录再次消失。",
+            "speakerId": "amiya",
+            "expressionId": "default",
+            "textVariants": [
+                {
+                    "variable": "记录去向",
+                    "value": "移交罗德岛",
+                    "text": "谢谢你。交给罗德岛后，我会亲自确认每一段记录。"
+                },
+                {
+                    "variable": "记录去向",
+                    "value": "封存现场",
+                    "text": "我理解。先保留现场，也许能听见更完整的真相。"
+                }
+            ],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "closure-after-choice",
+            "kind": 0,
+            "title": "可露希尔回应选择",
+            "text": "行，选择权在你，节奏骇客。",
+            "speakerId": "closure",
+            "expressionId": "default",
+            "textVariants": [
+                {
+                    "variable": "记录去向",
+                    "value": "移交罗德岛",
+                    "text": "上传通道已经打开。别让凯尔希发现我偷偷给你开了后门。"
+                },
+                {
+                    "variable": "记录去向",
+                    "value": "封存现场",
+                    "text": "封存协议已写入。下次再想拆它，可要请我喝点好的。"
+                }
+            ],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "hacker-after-choice",
+            "kind": 0,
+            "title": "节奏骇客回应",
+            "text": "记录不会替我们做决定，但它至少能证明，有人曾经在这里活着。",
+            "speakerId": "rhythm-hacker",
+            "expressionId": "voice",
+            "textVariants": [
+                {
+                    "variable": "记录去向",
+                    "value": "移交罗德岛",
+                    "text": "这份记录会进入罗德岛档案。接下来，让证据自己说话。"
+                },
+                {
+                    "variable": "记录去向",
+                    "value": "封存现场",
+                    "text": "先把它锁在这里。异常频段还没有结束，我们应该再回来一次。"
+                }
+            ],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        },
+        {
+            "id": "recording-rhythm-stage",
+            "kind": 3,
+            "title": "同步录音节奏",
+            "text": "",
+            "speakerId": "",
+            "expressionId": "",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "RHYTHM-REC-01",
+            "chartAssetPath": "Assets/RhythmDemo/Resources/Charts/geometry-demo.json",
+            "autoplay": false
+        },
+        {
+            "id": "recording-ending",
+            "kind": 4,
+            "title": "录音结束",
+            "text": "磁带停止转动，封存密室里只剩下逐渐稳定的底噪。",
+            "speakerId": "",
+            "expressionId": "",
+            "textVariants": [],
+            "choices": [],
+            "backgroundId": "",
+            "transition": "fade",
+            "levelId": "0-1",
+            "chartAssetPath": "",
+            "autoplay": false
+        }
+    ]
+}

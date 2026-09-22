@@ -16,7 +16,7 @@ namespace GeometryRhythm
         public TextAsset chartOverride;
         public Camera demoCamera;
         [Header("Application flow")]
-        [TextArea(1,3)] public string gameTitle = "GEOMETRY\nRHYTHM";
+        [TextArea(1,3)] public string gameTitle = "RHYTHM\nHACKER";
         public bool showFrontend = true;
         [HideInInspector] public bool startInMenu;
         [Header("Play options")]

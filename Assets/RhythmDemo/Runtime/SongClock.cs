@@ -66,7 +66,7 @@ namespace GeometryRhythm
                 double fade = Math.Min(1, t / 2) * Math.Min(1, Math.Max(0, duration - t) / 2);
                 samples[i] = (float)((.2 * kick + .10 * low + .13 * bell + .035 * hat + pad) * fade);
             }
-            var clip = AudioClip.Create("Geometry / original procedural demo", samples.Length, 1, rate, false);
+            var clip = AudioClip.Create("Rhythm Hacker / original procedural demo", samples.Length, 1, rate, false);
             clip.SetData(samples, 0);
             return clip;
         }

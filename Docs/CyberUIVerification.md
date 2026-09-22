@@ -1,6 +1,12 @@
 # 赛博 UI 验收记录
 
-日期：2026-09-17。Unity 2022.3.62f3c1，Windows x64，Built-in 渲染管线。
+日期：2026-09-18。Unity 2022.3.62f3c1，Windows x64，Built-in 渲染管线。
+
+## 标题与主界面分层
+
+标题页现在与主大厅完全分开。标题屏播放 `StreamingAssets/TitleVideos/` 中随机选中的视频，使用电影式上下黑边；顶部黑边显示白色未来风格游戏标题，下方黑边是唯一入口，显示“开始游戏 / Game Start”。标题页不加载 MainUI 的角色舞台图片、不创建角色槽或关卡胶囊，也不启动菜单 BGM；进入标题时画面与视频音量同步用 3 秒淡入。点击后会同时播放约 2.1 秒的 `Now let's begin` 机械提示音并开始标题 3 秒淡出，视频在淡出过程结束后停止；MainUI 在 1.8 秒内浮现，同时 `Resources/Music/main bgm` 在 1.8 秒内由静音渐入。进入 MainUI 后可继续使用顶部 `0-1` 至 `0-3` 关卡进度、三张可循环背景图、左下角 News 报纸入口、右下角手机好友入口、右下角 `ENTER!` 操作条、左上角返回确认和右上角操作说明。News、好友、返回确认、操作说明都不替换 MainUI，而是作为上层窗口从对应按钮位置展开，关闭时缩回按钮。News 初始两条帖子带未读红点，卡片列表也显示对应未读标记；打开详情后单条未读标记清除。News 详情使用爱心图标点赞和与正文对应的普通评论。好友窗口当前显示 Tnelis，聊天按文本长度延迟逐条出现，好友输入时显示闪烁 `···`，并包含带两次选择的预设分支。未读好友消息会在 MainUI 手机图标和 Tnelis 卡片同时显示红点，打开聊天后清除。Tnelis 对话结束后会生成 News03；打开 News03 会生成 Baka 的 News04。对 Baka 帖子评论后，FriendUI 右上方申请图标亮红点；打开申请面板并接受后 Baka 才加入好友列表并自动打开预设聊天。新新闻、好友申请和好友消息还会在左上方生成可点击通知栈，播放提示音，并在 8 秒、点击或阅读对应内容后消失。News 卡片流每行至少可放 4 个纵向小窗，显示图片、标题、发布者和正文摘要；详情窗口从点击卡片位置展开，隐藏标题栏 `X`，改用 `< BACK TO FEED`，返回时缩回原卡片。`ENTER!` 先上拉进入剧情／自由模式选择；剧情章节页与 MainUI 的 `0-1` 当前进度同步，自由模式复用完整曲库界面。无视频时会回退到 `CyberTitleGraphic`。
+
+`CyberHomeBackdropGraphic.cs` 与 `CyberIdolGraphic.cs` 继续作为 MainUI 背景资源缺失时的 UGUI MeshGraphic 回退；角色透明立绘仍可从 `Resources/Characters/hero` 自动加载并覆盖前景剪影。静态编译已用 Unity 2022.3.62f3c1 自带的 Roslyn 编译 `Assembly-CSharp` 与 `Assembly-CSharp-Editor` 响应文件，均无诊断。标题单入口、进入 MainUI 和 BGM 状态检查已加入 `-frontendSmoke`。由于验收时本机已有 Unity 编辑器占用同一工程，本轮没有并行启动第二次 Unity Player 构建；最终 Player 截图仍需在下一次独占 Unity 会话时重跑并替换 `ui-title.png`。
 
 ## 变更边界
 
@@ -12,7 +18,7 @@
 
 - 构建日志：`.validation/build-cyber-final.log`。
 - 结果：`GEOMETRY_VALIDATION_PASS 239 checks`；`GEOMETRY_BUILD_SUCCESS 73863116 bytes`。
-- UI 自检：`.validation/Cyber-final/frontend-smoke.txt`，`PASS=True`。使用实际 Button 回调测试标题、选曲、手动／自动开始、暂停返回、手动全 Miss、重试重置、自动满分结算、返回标题、临时 QA 曲目切换和相机／AudioListener 唯一性。
+- UI 自检：`.validation/Cyber-final/frontend-smoke.txt`，上一轮 `PASS=True`。当前代码增加了标题单入口、进入主界面和 BGM 渐显状态检查；最终 Player 结果待下一次独占 Unity 会话重跑。
 - 玩法自检：`.validation/Gameplay-cyber-final/player-smoke.txt`，结果如下。
 - 最终两份 Player 日志：`.validation/player-cyber-final.log` 与 `.validation/player-gameplay-cyber-final.log`，未发现 Exception、Shader error、MissingReference 或 Assertion failed。
 - 独立程序均以 1920×1080 窗口测试；QA RenderTexture 截图固定为 1600×900，不代表游戏被限到该分辨率。

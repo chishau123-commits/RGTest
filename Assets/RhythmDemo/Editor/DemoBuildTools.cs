@@ -12,7 +12,7 @@ namespace GeometryRhythm.Editor
     public static class DemoBuildTools
     {
         public const string ScenePath="Assets/RhythmDemo/Scenes/GeometryRhythmDemo.unity";
-        [MenuItem("Geometry Rhythm/Open Demo Scene")]
+        [MenuItem("Rhythm Hacker/Open Demo Scene")]
         public static void OpenDemo()
         {
             if(!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
@@ -23,7 +23,7 @@ namespace GeometryRhythm.Editor
         {
             Directory.CreateDirectory("Assets/RhythmDemo/Scenes");
             var scene=EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,NewSceneMode.Single);
-            var root=new GameObject("Geometry Rhythm / JSON Demo");
+            var root=new GameObject("Rhythm Hacker / JSON Demo");
             root.AddComponent<RhythmDemoController>();
             // Preserve the fog shader variants in the build; the world is generated at runtime.
             RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;
@@ -35,7 +35,7 @@ namespace GeometryRhythm.Editor
             if(!File.Exists(matPath)) AssetDatabase.CreateAsset(new Material(Shader.Find("Standard")),matPath);
             AssetDatabase.SaveAssets();AssetDatabase.Refresh();
         }
-        [MenuItem("Geometry Rhythm/Validate Chart and Rules")]
+        [MenuItem("Rhythm Hacker/Validate Chart and Rules")]
         public static void Validate() => DemoValidation.Run();
 
         public static void ValidateAndBuild()
@@ -46,14 +46,14 @@ namespace GeometryRhythm.Editor
                 if(!File.Exists(ScenePath)) CreateScene();
                 else EditorSceneManager.OpenScene(ScenePath);
                 DemoValidation.Run();
-                string directory=Argument("-demoBuildDirectory") ?? "Builds/GeometryRhythm";
+                string directory=Argument("-demoBuildDirectory") ?? "Builds/RhythmHacker";
                 Directory.CreateDirectory(directory);
-                PlayerSettings.companyName="Geometry Rhythm";PlayerSettings.productName="Geometry Rhythm Demo";
+                PlayerSettings.companyName="Rhythm Hacker";PlayerSettings.productName="Rhythm Hacker";
                 PlayerSettings.defaultScreenWidth=1920;PlayerSettings.defaultScreenHeight=1080;
                 PlayerSettings.fullScreenMode=FullScreenMode.Windowed;
                 PlayerSettings.runInBackground=true;
                 var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{
-                    scenes=new[]{ScenePath},locationPathName=Path.Combine(directory,"GeometryRhythmDemo.exe"),
+                    scenes=new[]{ScenePath},locationPathName=Path.Combine(directory,"RhythmHacker.exe"),
                     // Use a non-development player for normal play and performance checks.
                     target=BuildTarget.StandaloneWindows64,options=BuildOptions.None});
                 if(report.summary.result!=BuildResult.Succeeded) throw new Exception("Build failed: "+report.summary.result);

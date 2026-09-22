@@ -4,8 +4,8 @@
 
 ## 启动与构建
 
-- Unity 菜单：`Geometry Rhythm → Chart Studio → Create or Open Desktop Editor`
-- Windows 构建：`Geometry Rhythm → Chart Studio → Build Windows Editor`
+- Unity 菜单：`Rhythm Hacker → Chart Studio → Create or Open Desktop Editor`
+- Windows 构建：`Rhythm Hacker → Chart Studio → Build Windows Editor`
 - 构建结果：`Builds/GeometryChartStudio/GeometryChartStudio.exe`
 - 可以用 `-chart "D:\Charts\example.json"` 指定启动时载入和保存的谱面路径。
 
