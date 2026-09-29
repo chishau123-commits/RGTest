@@ -34,51 +34,11 @@ namespace GeometryRhythm.ChartEditor
 
         void UpdateViewportRect()
         {
-            Rect viewport = AvailableViewportRect();
-            if (VideoCameraLocked)
-            {
-                // Integer 16x9 blocks prevent Unity's raster rounding from introducing
-                // sub-pixel bars or a different WorldToViewport conversion at each UI size.
-                float blocks = Mathf.Max(1, Mathf.Floor(Mathf.Min(viewport.width / 16, viewport.height / 9)));
-                float width = blocks * 16, height = blocks * 9;
-                viewport = new Rect(Mathf.Round(viewport.x + (viewport.width - width) * .5f),
-                    Mathf.Round(viewport.y + (viewport.height - height) * .5f), width, height);
-            }
-            sceneCamera.pixelRect = viewport;
-            // Unity rounds the raster viewport to pixels. Use the media aspect
-            // explicitly so that rounding cannot change the perspective matrix.
-            if (VideoCameraLocked)
-            {
-                // The lens belongs to the authored camera rig. Writing the default
-                // 53 degrees here would silently shear every percentage anchor as
-                // soon as a pose key changed the FOV.
-                float fov = spatial?.VideoSpace != null ? spatial.VideoSpace.Pose(songTime).fov : VideoChartSpace.FieldOfView;
-                sceneCamera.aspect = VideoFrameAspect;
-                sceneCamera.fieldOfView = fov;
-                sceneCamera.projectionMatrix = Matrix4x4.Perspective(fov, VideoFrameAspect,
-                    sceneCamera.nearClipPlane, sceneCamera.farClipPlane);
-            }
-            else { sceneCamera.ResetAspect(); sceneCamera.ResetProjectionMatrix(); }
-        }
-        Rect AvailableViewportRect()
-        {
             float left = chartCameraPreview ? 0 : Mathf.Min(PanelWidth * uiScale, Screen.width - 40);
             float right = chartCameraPreview ? 0 : Mathf.Min(RightPanelWidth * uiScale, Screen.width - left - 40);
             float bottom = Mathf.Min(TimelineHeight * uiScale, Screen.height - 80);
-            return new Rect(left, bottom, Mathf.Max(40, Screen.width - left - right),
+            sceneCamera.pixelRect = new Rect(left, bottom, Mathf.Max(40, Screen.width - left - right),
                 Mathf.Max(40, Screen.height - bottom - ToolbarHeight * uiScale));
-        }
-        void DrawVideoFrameMatte()
-        {
-            if (!VideoCameraLocked) return;
-            Rect area = AvailableViewportRect(), frame = sceneCamera.pixelRect;
-            Color previous = GUI.color; GUI.color = new Color(.035f, .04f, .05f);
-            // GUI coordinates are top-down; camera pixels are bottom-up.
-            GUI.DrawTexture(new Rect(area.x, Screen.height - area.yMax, frame.x - area.x, area.height), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(frame.xMax, Screen.height - area.yMax, area.xMax - frame.xMax, area.height), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(frame.x, Screen.height - area.yMax, frame.width, area.yMax - frame.yMax), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(frame.x, Screen.height - frame.y, frame.width, frame.y - area.y), Texture2D.whiteTexture);
-            GUI.color = previous;
         }
         void ReadInspectorResize(Event e)
         {
@@ -107,9 +67,7 @@ namespace GeometryRhythm.ChartEditor
         }
         void ReadNavigationMode()
         {
-            if (VideoCameraLocked) { ApplyLockedVideoCamera(); return; }
             if (chartCameraPreview) { ReleaseMouse(); return; }
-            if (LegacyBgaFollowing) { ReleaseMouse(); return; }
             bool enabled = flyMode;
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
             enabled = (GetKeyState(0x14) & 1) != 0;
@@ -126,7 +84,6 @@ namespace GeometryRhythm.ChartEditor
         }
         void SetFlightMode(bool enabled)
         {
-            if (VideoCameraLocked) { ApplyLockedVideoCamera(); return; }
             draggingHandle = false;
             if (!enabled)
             {
@@ -148,7 +105,6 @@ namespace GeometryRhythm.ChartEditor
         }
         void CaptureMouse()
         {
-            if (VideoCameraLocked) { ReleaseMouse(); return; }
             clearGuiFocus = true; textInputFocused = false; ignoreLookFrame = true;
             Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false;
         }
@@ -156,7 +112,6 @@ namespace GeometryRhythm.ChartEditor
         void OnApplicationFocus(bool focused) { if (!focused) { ReleaseMouse(); draggingHandle = inspectorResizing = false; CancelTimelineGesture(); } }
         void ReadFlight()
         {
-            if (VideoCameraLocked) return;
             Vector2 mouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
             if (Input.GetMouseButtonDown(1) && PointerInViewport(mouse) && !draggingHandle) CaptureMouse();
             if (Cursor.lockState != CursorLockMode.Locked || WorkspaceInputBlocked || !Application.isFocused) return;
@@ -179,29 +134,19 @@ namespace GeometryRhythm.ChartEditor
 
         void ToggleCameraPreview()
         {
-            if (VideoSpaceEditing) { SetPlaying(!playing); return; }
             SetPreviewMode(!chartCameraPreview);
         }
         void DrawNavigationStatus()
         {
-            if (VideoSpaceEditing) return;
-            bool followingBga = LegacyBgaFollowing;
             string state = flyMode ? "CAPS ON  |  CREATIVE FLIGHT" : "CAPS OFF  |  ORBIT / PAN";
             if (chartCameraPreview) state += "  |  CAMERA PREVIEW (navigation paused)";
-            else if (followingBga) state = "BLENDER BGA CAMERA  |  FOLLOWING";
-            string hint = followingBga ? "Switch to FREE INSPECTION on the BGA page to navigate independently" : flyMode ? (Cursor.lockState == CursorLockMode.Locked
+            string hint = flyMode ? (Cursor.lockState == CursorLockMode.Locked
                 ? "WASD move · Space up · Shift down · Ctrl fast · Esc release mouse"
                 : "Mouse released · RMB in viewport to fly · Caps OFF returns to orbit")
                 : "RMB orbit · MMB pan · F focus selection · Drag colored axes · Wheel zoom disabled";
-            if (VideoCameraLocked)
-            {
-                state = "VIDEO VIEW  |  CAMERA LOCKED";
-                hint = "Edit paths / notes with handles or fields · Scrub the timeline · F5 previews this same view";
-            }
             GUI.Label(new Rect(PanelWidth + 14, ToolbarHeight + 10, ViewportRight - PanelWidth - 28, 24), state, headingStyle);
             GUI.Label(new Rect(PanelWidth + 14, ToolbarHeight + 38, ViewportRight - PanelWidth - 28, 38), hint, smallStyle);
-            if (mode == ChartEditMode.Stage || mode == ChartEditMode.Paths || mode == ChartEditMode.Notes)
-                DrawEditorPlaybackStatus();
+            DrawEditorPlaybackStatus();
             if (mode == ChartEditMode.Camera && !chartCameraPreview)
             {
                 Vector2 marker = WorldGui(PlacementMarkerPosition);
@@ -243,7 +188,6 @@ namespace GeometryRhythm.ChartEditor
         }
         void FocusSelection()
         {
-            if (VideoCameraLocked) return;
             Vector3 origin;
             if (mode == ChartEditMode.Notes && selectedNote >= 0 && selectedNote < chart.notes.Length)
                 EditorNotePose(chart.notes[selectedNote], out origin, out _);
@@ -341,7 +285,7 @@ namespace GeometryRhythm.ChartEditor
                 {
                     key.worldPosition = dragOrigin; key.worldTarget = dragOrigin + evaluatorCamera.transform.forward * 20;
                     key.useWorldPose = true; key.usePathPose = false;
-                    spatial = CreateEditorSpatial(); RebuildVisuals();
+                    spatial = new SpatialDirector(chart, tempo); RebuildVisuals();
                 }
                 dragCameraTarget = key.worldTarget;
             }
@@ -398,7 +342,7 @@ namespace GeometryRhythm.ChartEditor
                 key.x = local.x; key.y = local.y;
             }
             else if (dragMode == ChartEditMode.Scene) chart.sceneObjects[dragIndex].position = position;
-            spatial = CreateEditorSpatial(); RebuildVisuals();
+            spatial = new SpatialDirector(chart, tempo); RebuildVisuals();
         }
         void ApplySceneObjectRotation(Quaternion rotation)
         {
@@ -407,7 +351,6 @@ namespace GeometryRhythm.ChartEditor
         }
         void DrawGizmo()
         {
-            if (VideoSpaceEditing) { DrawVideoSpaceHandles(); return; }
             if (WorkspaceInputBlocked || playing || chartCameraPreview || Cursor.lockState == CursorLockMode.Locked ||
                 !GizmoPose(out var origin, out var frame) || sceneCamera.WorldToScreenPoint(origin).z <= .1f) return;
             Vector2 start = WorldGui(origin);
@@ -494,7 +437,6 @@ namespace GeometryRhythm.ChartEditor
         }
         void DrawOffsetInspector()
         {
-            if (VideoSpaceEditing) { DrawScreenAnchorInspector(); return; }
             var path = chart.paths[selectedPath]; int tick = PlayheadTick;
             GUILayout.Space(8); GUILayout.Label("OFFSET AT BEAT " + CurrentBeat.ToString("0.###"), headingStyle);
             float beat = CurrentBeat;
@@ -516,7 +458,7 @@ namespace GeometryRhythm.ChartEditor
                 var list = new List<PathOffsetKey>(path.offsetKeys); list.RemoveAll(k => k.tick == tick); path.offsetKeys = list.ToArray();
             }, "Offset key deleted");
             GUI.enabled = previous;
-            if (!VideoCameraLocked && GUILayout.Button("Focus cross-section  [F]")) FocusSelection();
+            if (GUILayout.Button("Focus cross-section  [F]")) FocusSelection();
             GUILayout.Label((path.offsetKeys == null ? 0 : path.offsetKeys.Length) +
                 " offset keys · X/Y are local to the stage. Drag arrows or center square; edits create a key at this beat. Other keys stay fixed.", smallStyle);
         }

@@ -68,89 +68,41 @@
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorWorkspaceChecks.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorCameraTweenChecks.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorTimeline.cs" />
-    <Compile Include="Assets\RhythmDemo\Runtime\NoteSpawnSettings.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\ChartData.cs" />
-    <Compile Include="Assets\RhythmDemo\Runtime\VideoBgaRuntime.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\TouchRecorder\ThartTouchRecorder.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Core\ThartChartBuilder.cs" />
-    <Compile Include="Assets\RhythmDemo\Runtime\NoteScrollSettings.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\StageSpline.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Desktop\ThartEditorController.UI.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\TouchRecorder\ThartTouchRecorder.Audio.cs" />
-    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorVideoSpace.cs" />
-    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorVideoBgaChecks.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\CyberFrameGraphic.cs" />
-    <Compile Include="Assets\RhythmDemo\Runtime\AudioSyncSettings.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Core\ThartChartIO.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\RhythmFrontendView.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorWorkspaceUI.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorPlaybackChecks.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\MobileUiLayout.cs" />
-    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorVideoBga.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\SpatialDirector.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorCameraCurves.cs" />
-    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorBeatEditing.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\JudgementEngine.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\CyberTheme.cs" />
-    <Compile Include="Assets\RhythmDemo\Runtime\GameViewport.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\SceneVisuals.cs" />
-    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorVideoSpaceChecks.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorNoteChecks.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Desktop\ThartEditorPreview.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\RhythmFrontend.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Network\ThartNetworkBase.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorVisualAuthoringChecks.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Desktop\ThartAudioLocator.cs" />
-    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorNoteSpeedChecks.cs" />
-    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorBlenderBga.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Desktop\ThartEditorController.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Desktop\ThartEditorController.Files.cs" />
     <Compile Include="Assets\Scripts\test.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorVisualLibraries.cs" />
-    <Compile Include="Assets\RhythmDemo\Runtime\VideoChartSpace.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\SongClock.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\TouchRecorder\ThartTouchRecorderBootstrap.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Desktop\ThartEditorBootstrap.cs" />
-    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorBeatEditingChecks.cs" />
-    <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorNoteSpeed.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Desktop\ThartEditorAudio.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Desktop\ThartEditorStyles.cs" />
-    <Compile Include="Assets\RhythmDemo\Runtime\BlenderBgaRuntime.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorTimelineChecks.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Core\ThartPackage.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Core\ThartTouchData.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\CyberPanelGraphic.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorInteraction.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\PagedSongCarousel.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Network\ThartServer.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Network\ThartClient.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Core\ThartZip.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorInteractionChecks.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\ChartEditorPlayback.cs" />
     <Compile Include="Assets\RhythmDemo\ChartEditor\RuntimeChartEditorController.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\RhythmDemoController.cs" />
-    <Compile Include="Assets\RhythmDemo\Thart\Desktop\ThartFileDialog.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\VisualAuthoringRuntime.cs" />
     <Compile Include="Assets\RhythmDemo\Runtime\DemoHud.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\RhythmDemo\Resources\Fonts\ShareTechMono-OFL.txt" />
     <None Include="Assets\RhythmDemo\Resources\Shaders\Sky.shader" />
-    <None Include="Assets\RhythmDemo\Resources\BlenderBgaShaders\glTFIncludes\glTFUnityStandardCoreForward.cginc" />
-    <None Include="Assets\RhythmDemo\Thart\Preview\ThartUnlit.shader" />
-    <None Include="Assets\RhythmDemo\Resources\BlenderBgaShaders\glTFUnlit.shader" />
-    <None Include="Assets\RhythmDemo\Resources\BlenderBgaShaders\glTFIncludes\glTFUnityStandardCore.cginc" />
-    <None Include="Assets\RhythmDemo\Resources\BlenderBgaShaders\glTFPbrMetallicRoughness.shader" />
-    <None Include="Assets\RhythmDemo\Resources\BlenderBgaShaders\glTFIncludes\glTFUnityStandardMeta.cginc" />
-    <None Include="Assets\RhythmDemo\Resources\BlenderBgaShaders\glTFIncludes\glTFUnityStandardCoreForwardSimple.cginc" />
     <None Include="Assets\RhythmDemo\Resources\Shaders\Flat.shader" />
-    <None Include="Assets\RhythmDemo\Resources\BlenderBgaShaders\glTFIncludes\glTFUnityStandardInput.cginc" />
-    <None Include="Assets\RhythmDemo\Resources\Shaders\Note.shader" />
     <None Include="Assets\RhythmDemo\Resources\Fonts\Rajdhani-OFL.txt" />
-    <None Include="Assets\RhythmDemo\Resources\BlenderBgaShaders\glTFIncludes\glTF.cginc" />
     <None Include="Assets\RhythmDemo\Resources\Shaders\Sleeve.shader" />
-    <None Include="Assets\RhythmDemo\Resources\BlenderBgaPanoramicSky.shader" />
-    <None Include="Assets\RhythmDemo\Resources\BlenderBgaShaders\glTFPbrSpecularGlossiness.shader" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
@@ -483,10 +435,6 @@
     </Reference>
     <Reference Include="UnityEditor.UnityConnectModule">
       <HintPath>C:\Program Files\Unity\Hub\Editor\2022.3.62f3c1\Editor\Data\Managed\UnityEngine\UnityEditor.UnityConnectModule.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Collections.LowLevel.ILSupport">
-      <HintPath>Library\PackageCache\com.unity.collections@1.2.4\Unity.Collections.LowLevel.ILSupport\Unity.Collections.LowLevel.ILSupport.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="ReportGeneratorMerged">
@@ -997,76 +945,20 @@
       <HintPath>C:\Program Files\Unity\Hub\Editor\2022.3.62f3c1\Editor\Data\NetStandard\compat\2.1.0\shims\netfx\System.Xml.Serialization.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="glTFast.dots">
-      <HintPath>Library\ScriptAssemblies\glTFast.dots.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.EditorCoroutines.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.EditorCoroutines.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="glTFast.Editor">
-      <HintPath>Library\ScriptAssemblies\glTFast.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Burst">
-      <HintPath>Library\ScriptAssemblies\Unity.Burst.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Burst.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.Burst.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Timeline.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.Timeline.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.VisualScripting.Shared.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Shared.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.VisualStudio.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.VisualStudio.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="UnityEditor.UI">
-      <HintPath>Library\ScriptAssemblies\UnityEditor.UI.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.VisualScripting.Core">
-      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Core.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="UnityEngine.UI">
-      <HintPath>Library\ScriptAssemblies\UnityEngine.UI.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.VisualScripting.Core.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Core.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Rider.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.Rider.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.VisualScripting.Flow">
-      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Flow.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.VisualScripting.Flow.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Flow.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Unity.Mathematics.Editor">
-      <HintPath>Library\ScriptAssemblies\Unity.Mathematics.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="Unity.Timeline">
       <HintPath>Library\ScriptAssemblies\Unity.Timeline.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.TestTools.CodeCoverage.Editor.OpenCover.Mono.Reflection">
       <HintPath>Library\ScriptAssemblies\Unity.TestTools.CodeCoverage.Editor.OpenCover.Mono.Reflection.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>Library\ScriptAssemblies\UnityEngine.UI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.EditorCoroutines.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.EditorCoroutines.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.VisualScripting.SettingsProvider.Editor">
@@ -1085,36 +977,52 @@
       <HintPath>Library\ScriptAssemblies\Unity.TestTools.CodeCoverage.Editor.OpenCover.Model.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.Collections">
-      <HintPath>Library\ScriptAssemblies\Unity.Collections.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="Unity.PlasticSCM.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.PlasticSCM.Editor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="glTFast">
-      <HintPath>Library\ScriptAssemblies\glTFast.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.VisualScripting.State.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.State.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.Timeline.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.Timeline.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.Settings.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.Settings.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.Mathematics">
-      <HintPath>Library\ScriptAssemblies\Unity.Mathematics.dll</HintPath>
+    <Reference Include="Unity.VisualScripting.Shared.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Shared.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.VisualStudio.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.VisualStudio.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.TextMeshPro">
       <HintPath>Library\ScriptAssemblies\Unity.TextMeshPro.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.VisualScripting.Core">
+      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="Unity.TextMeshPro.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.TextMeshPro.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEditor.UI">
+      <HintPath>Library\ScriptAssemblies\UnityEditor.UI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.VisualScripting.Core.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Core.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Rider.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.Rider.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Unity.VisualScripting.State">
@@ -1123,6 +1031,14 @@
     </Reference>
     <Reference Include="Unity.VSCode.Editor">
       <HintPath>Library\ScriptAssemblies\Unity.VSCode.Editor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.VisualScripting.Flow">
+      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Flow.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.VisualScripting.Flow.Editor">
+      <HintPath>Library\ScriptAssemblies\Unity.VisualScripting.Flow.Editor.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>

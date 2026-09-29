@@ -16,7 +16,8 @@ namespace GeometryRhythm.ChartEditor
 
         // The 3D playhead is the center of the current judgement cross-section,
         // shared with the near ends of the live paths and the authored note hit poses.
-        Vector3 EditorPlayheadPosition(double time) => spatial.JudgementCenter(time);
+        Vector3 EditorPlayheadPosition(double time)
+            => spatial.RouteAt(spatial.DistanceAtTime(time) + SpatialDirector.NearDepth);
         void BuildEditorPlaybackVisuals()
         {
             if (chartCameraPreview) return;
@@ -47,7 +48,7 @@ namespace GeometryRhythm.ChartEditor
                 var points = editorLivePathPoints[i];
                 for (int p = 0; p < points.Length; p++)
                     points[p] = spatial.Point(chart.paths[i].id,
-                        Mathf.Lerp(SpatialDirector.NearDepth - 2, spatial.VisiblePathFarDepth, p / (points.Length - 1f)), songTime);
+                        Mathf.Lerp(SpatialDirector.NearDepth - 2, SpatialDirector.FarDepth, p / (points.Length - 1f)), songTime);
                 line.SetPositions(points);
             }
             if (editorPlayheadLine != null)
