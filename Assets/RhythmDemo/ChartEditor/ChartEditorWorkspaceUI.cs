@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
@@ -16,7 +17,7 @@ namespace GeometryRhythm.ChartEditor
         bool WorkspaceModalOpen => showSettings || showGuide || fileDialogOpen || pendingFileAction != PendingFileAction.None;
         bool WorkspaceInputBlocked => WorkspaceModalOpen || showFilesMenu;
         bool HasUnsavedChanges => chart != null && JsonUtility.ToJson(chart) != savedChartJson;
-        Rect FilesMenuRect => new Rect(ViewWidth - 226, ToolbarHeight + 2, 170, 116);
+        Rect FilesMenuRect => new Rect(ViewWidth - 246, ToolbarHeight + 2, 190, 186);
         Transform previewMotionRoot;
         Vector3 previewEditorPosition, previewEditorPivot;
         Quaternion previewEditorRotation;
@@ -83,6 +84,7 @@ namespace GeometryRhythm.ChartEditor
                 e.Use(); return;
             }
             if (WorkspaceInputBlocked || textInputFocused) return;
+            if (ReadBeatEditingKeys(e)) return;
             if (e.keyCode == KeyCode.F5) { ToggleCameraPreview(); e.Use(); }
             else if (chartCameraPreview && e.keyCode == KeyCode.Space) { SetPlaying(!playing); e.Use(); }
             else if (e.control && e.keyCode == KeyCode.S && Cursor.lockState != CursorLockMode.Locked)
@@ -92,7 +94,7 @@ namespace GeometryRhythm.ChartEditor
         {
             if (!showFilesMenu || e.type != EventType.MouseDown) return;
             Vector2 mouse = e.mousePosition / uiScale;
-            if (FilesMenuRect.Contains(mouse) || new Rect(ViewWidth - 226, 0, 70, ToolbarHeight).Contains(mouse)) return;
+            if (FilesMenuRect.Contains(mouse) || new Rect(ViewWidth - 246, 0, 90, ToolbarHeight).Contains(mouse)) return;
             showFilesMenu = false;
             // Dismissing a dropdown must not also move a control point or the playhead.
             if (mouse.y >= ToolbarHeight) e.Use();
@@ -102,9 +104,13 @@ namespace GeometryRhythm.ChartEditor
             Rect area = FilesMenuRect;
             GUI.Box(area, "", panelStyle);
             if (GUI.Button(new Rect(area.x + 7, area.y + 7, area.width - 14, 31), "New")) RequestFileAction(PendingFileAction.New);
-            if (GUI.Button(new Rect(area.x + 7, area.y + 42, area.width - 14, 31), "Load")) RequestFileAction(PendingFileAction.Load);
+            if (GUI.Button(new Rect(area.x + 7, area.y + 42, area.width - 14, 31), "Open chart / package")) RequestFileAction(PendingFileAction.Load);
             if (GUI.Button(new Rect(area.x + 7, area.y + 77, area.width - 14, 31), "Save As"))
             { showFilesMenu = false; SaveChartAs(); }
+            if (GUI.Button(new Rect(area.x + 7, area.y + 112, area.width - 14, 31), "Export .grchart package"))
+            { showFilesMenu = false; ExportChartPackage(); }
+            if (GUI.Button(new Rect(area.x + 7, area.y + 147, area.width - 14, 31), "Import / replace video"))
+            { showFilesMenu = false; DrawVideoImportFromMenu(); }
         }
         void RequestFileAction(PendingFileAction action)
         {
@@ -119,7 +125,7 @@ namespace GeometryRhythm.ChartEditor
             else if (action == PendingFileAction.Load)
             {
                 string path = ChooseChartFile(false);
-                if (!string.IsNullOrEmpty(path)) TryLoadChart(path);
+                if (!string.IsNullOrEmpty(path)) TryLoadChartOrPackage(path);
             }
         }
         void DrawUnsavedConfirmation()
@@ -144,14 +150,114 @@ namespace GeometryRhythm.ChartEditor
             string path = ChooseChartFile(true);
             return !string.IsNullOrEmpty(path) && TrySaveChart(path);
         }
+        void DrawVideoImportFromMenu()
+        {
+            ReleaseMouse(); CancelTimelineGesture(); SetPlaying(false);
+            string source = ChooseVisualAsset("Import finished BGA video", "Video\0*.mp4;*.mov;*.mkv;*.webm;*.avi\0\0");
+            if (!string.IsNullOrEmpty(source)) StartCoroutine(ImportVideoBga(source));
+        }
+
+        bool TryLoadChartOrPackage(string path)
+        {
+            string extension = Path.GetExtension(path).ToLowerInvariant();
+            if (extension != ".grchart" && extension != ".zip") return TryLoadChart(path);
+            try
+            {
+                string digest = HashMedia(path).Substring(0, 24);
+                string root = Path.Combine(Application.persistentDataPath, "ImportedChartPackages", digest);
+                string marker = Path.Combine(root, ".complete");
+                if (!File.Exists(marker))
+                {
+                    string temporary = root + ".extracting-" + Guid.NewGuid().ToString("N");
+                    Directory.CreateDirectory(temporary);
+                    try
+                    {
+                        using (var archive = ZipFile.OpenRead(path))
+                        foreach (var entry in archive.Entries)
+                        {
+                            if (string.IsNullOrEmpty(entry.Name)) continue;
+                            string target = Path.GetFullPath(Path.Combine(temporary, entry.FullName.Replace('/', Path.DirectorySeparatorChar)));
+                            string boundary = Path.GetFullPath(temporary) + Path.DirectorySeparatorChar;
+                            if (!target.StartsWith(boundary, StringComparison.OrdinalIgnoreCase))
+                                throw new InvalidDataException("Package contains an unsafe path");
+                            Directory.CreateDirectory(Path.GetDirectoryName(target)); entry.ExtractToFile(target, false);
+                        }
+                        string packageFile = Path.Combine(temporary, "package.json");
+                        if (!File.Exists(packageFile)) throw new InvalidDataException("Package descriptor is missing");
+                        var package = JsonUtility.FromJson<ChartPackageManifest>(File.ReadAllText(packageFile));
+                        if (package == null || package.kind != "geometry-rhythm-chart-package" || package.schemaVersion != 1)
+                            throw new InvalidDataException("Not a Geometry Rhythm chart package");
+                        ResolvePackageChart(temporary, package);
+                        if (Directory.Exists(root)) Directory.Delete(root, true);
+                        Directory.Move(temporary, root); File.WriteAllText(marker, digest);
+                    }
+                    catch { if (Directory.Exists(temporary)) Directory.Delete(temporary, true); throw; }
+                }
+                var descriptor = JsonUtility.FromJson<ChartPackageManifest>(File.ReadAllText(Path.Combine(root, "package.json")));
+                if (!TryLoadChart(ResolvePackageChart(root, descriptor))) return false;
+                // A .grchart is an immutable delivery artifact. Never let Ctrl+S silently
+                // edit its extraction cache or overwrite the ZIP with raw JSON.
+                needsSaveAs = true;
+                SetStatus("Opened package · use Save As for a working copy, then Export .grchart to deliver");
+                return true;
+            }
+            catch (Exception e) { SetStatus("Package import failed: " + e.Message); return false; }
+        }
+
+        static string ResolvePackageChart(string root, ChartPackageManifest descriptor)
+        {
+            if (descriptor == null || string.IsNullOrWhiteSpace(descriptor.chart))
+                throw new InvalidDataException("Package chart entry is missing");
+            string boundary = Path.GetFullPath(root) + Path.DirectorySeparatorChar;
+            string chartPath = Path.GetFullPath(Path.Combine(root, descriptor.chart.Replace('/', Path.DirectorySeparatorChar)));
+            if (!chartPath.StartsWith(boundary, StringComparison.OrdinalIgnoreCase) || !File.Exists(chartPath))
+                throw new InvalidDataException("Package chart entry is invalid");
+            return chartPath;
+        }
+
+        void ExportChartPackage()
+        {
+            string packagePath = ChooseChartFile(true, true);
+            if (string.IsNullOrEmpty(packagePath)) return;
+            if (!packagePath.EndsWith(".grchart", StringComparison.OrdinalIgnoreCase)) packagePath += ".grchart";
+            TryExportChartPackage(packagePath);
+        }
+        bool TryExportChartPackage(string packagePath)
+        {
+            string staging = Path.Combine(Application.temporaryCachePath, "ChartPackage-" + Guid.NewGuid().ToString("N"));
+            string completed = Path.GetFullPath(packagePath) + ".writing-" + Guid.NewGuid().ToString("N");
+            try
+            {
+                VideoChartSpace.Validate(chart);
+                Directory.CreateDirectory(staging);
+                string stagedChart = Path.Combine(staging, "chart.json");
+                Normalize(); var portable = PortableChartForSave(stagedChart);
+                File.WriteAllText(stagedChart, JsonUtility.ToJson(portable, true), new UTF8Encoding(false));
+                var descriptor = new ChartPackageManifest { title = chart.title, author = chart.author,
+                    createdUtc = DateTime.UtcNow.ToString("o") };
+                File.WriteAllText(Path.Combine(staging, "package.json"), JsonUtility.ToJson(descriptor, true), new UTF8Encoding(false));
+                ZipFile.CreateFromDirectory(staging, completed, System.IO.Compression.CompressionLevel.Fastest, false);
+                if (File.Exists(packagePath)) File.Replace(completed, packagePath, null);
+                else File.Move(completed, packagePath);
+                SetStatus("Exported portable package: " + Path.GetFileName(packagePath));
+                return true;
+            }
+            catch (Exception e) { SetStatus("Package export failed: " + e.Message); return false; }
+            finally
+            {
+                if (Directory.Exists(staging)) Directory.Delete(staging, true);
+                if (File.Exists(completed)) File.Delete(completed);
+            }
+        }
         bool TrySaveChart(string path)
         {
             try
             {
                 path = Path.GetFullPath(path);
-                Normalize(); string json = JsonUtility.ToJson(chart, true);
+                Normalize(); var portable = PortableChartForSave(path); string json = JsonUtility.ToJson(portable, true);
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
                 File.WriteAllText(path, json, new UTF8Encoding(false));
+                chart.videoBga = portable.videoBga; chart.audioFile = portable.audioFile;
                 filePath = path; needsSaveAs = false; savedChartJson = JsonUtility.ToJson(chart);
                 try { ChartLoader.Parse(json); SetStatus("Saved " + Path.GetFileName(path) + " · gameplay validation passed"); }
                 catch (Exception e) { SetStatus("Draft saved; validation: " + e.Message); }
@@ -181,19 +287,25 @@ namespace GeometryRhythm.ChartEditor
                 if (audioSource != null) SetPlaying(false);
                 chart = candidate; CancelTimelineGesture(); timelineStart = 0; timelineZoom = 1;
                 selectedStagePoint = selectedCameraKey = selectedPath = selectedSection = 0; selectedNote = -1;
-                undo.Clear(); redo.Clear(); songTime = 0; Rebuild(); SetupAudio();
-                filePath = Path.GetFullPath(path); needsSaveAs = false; savedChartJson = JsonUtility.ToJson(chart);
-                SetStatus("Loaded " + Path.GetFileName(filePath)); return true;
+                undo.Clear(); redo.Clear(); songTime = 0;
+                filePath = Path.GetFullPath(path); Rebuild(); SetupAudio();
+                if (VideoSpaceEditing) SetMode(ChartEditMode.Paths);
+                needsSaveAs = false; savedChartJson = JsonUtility.ToJson(chart);
+                SetStatus("Loaded " + Path.GetFileName(filePath));
+                if (!Application.isBatchMode) RefreshBgaBinding();
+                return true;
             }
             catch (Exception e)
             {
                 chart = previous; selectedStagePoint = previousStage; selectedCameraKey = previousCamera;
                 selectedPath = previousPath; selectedSection = previousSection;
+                Debug.LogWarning("Chart load failed: " + path + " / " + e.Message);
                 SetStatus("Load failed: " + e.Message); return false;
             }
         }
         static void CheckEditableChart(ChartData candidate)
         {
+            VideoChartSpace.Validate(candidate);
             // Drafts can have no notes or an unfinished route. Reject corrupt structures,
             // but leave the stricter gameplay checks to Validate, as with draft saving.
             if (candidate.stagePath?.points != null && Array.Exists(candidate.stagePath.points, p => p == null))
@@ -239,7 +351,7 @@ namespace GeometryRhythm.ChartEditor
         [DllImport("comdlg32.dll")] static extern int CommDlgExtendedError();
         [DllImport("user32.dll")] static extern IntPtr GetActiveWindow();
 #endif
-        string ChooseChartFile(bool save)
+        string ChooseChartFile(bool save, bool package = false)
         {
             ReleaseMouse(); CancelTimelineGesture(); SetPlaying(false); clearGuiFocus = true;
             fileDialogOpen = true;
@@ -248,15 +360,18 @@ namespace GeometryRhythm.ChartEditor
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
                 var dialog = new ChartFileDialog
                 {
-                    owner = GetActiveWindow(), title = save ? "Save chart as" : "Load chart",
+                    owner = GetActiveWindow(), title = package ? "Export portable chart package" : save ? "Save chart as" : "Open chart or package",
                     initialDirectory = Path.GetDirectoryName(Path.GetFullPath(filePath)),
+                    filter = package ? "Geometry Rhythm package (*.grchart)\0*.grchart\0\0" :
+                        (save ? "Chart files (*.json)\0*.json\0\0" : "Chart or package (*.json;*.grchart)\0*.json;*.grchart\0All files (*.*)\0*.*\0\0"),
+                    defaultExtension = package ? "grchart" : "json",
                     flags = 0x00080000 | 0x00000008 | 0x00000800 | (save ? 0x00000002 : 0x00001000)
                 };
                 dialog.file = Marshal.AllocHGlobal(dialog.maxFile * 2);
                 try
                 {
                     var buffer = new char[dialog.maxFile];
-                    string name = save ? (needsSaveAs ? "Untitled.json" : Path.GetFileName(filePath)) : "";
+                    string name = package ? SafePackageName(chart?.title) + ".grchart" : save ? (needsSaveAs ? "Untitled.json" : Path.GetFileName(filePath)) : "";
                     name.CopyTo(0, buffer, 0, Math.Min(name.Length, buffer.Length - 1));
                     Marshal.Copy(buffer, 0, dialog.file, buffer.Length);
                     bool accepted = save ? SaveChartDialog(dialog) : OpenChartDialog(dialog);
@@ -273,9 +388,16 @@ namespace GeometryRhythm.ChartEditor
             catch (Exception error) { SetStatus("File dialog failed: " + error.Message); return null; }
             finally { fileDialogOpen = false; }
         }
+        static string SafePackageName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "Untitled";
+            foreach (char invalid in Path.GetInvalidFileNameChars()) value = value.Replace(invalid, '_');
+            return value.Trim();
+        }
 
         void SetPreviewMode(bool enabled)
         {
+            if (VideoSpaceEditing) { chartCameraPreview = false; SetPlaying(enabled); return; }
             if (chartCameraPreview == enabled) return;
             draggingHandle = false; ReleaseMouse(); CancelTimelineGesture(); clearGuiFocus = true;
             SetPlaying(false);
@@ -286,7 +408,13 @@ namespace GeometryRhythm.ChartEditor
                 previewEditorYaw = orbitYaw; previewEditorPitch = orbitPitch; previewEditorDistance = orbitDistance;
                 chartCameraPreview = true;
                 if (songTime >= Duration) songTime = 0;
-                UpdateViewportRect(); RebuildVisuals(); spatial.EvaluateCamera(sceneCamera, songTime);
+                UpdateViewportRect(); RebuildVisuals();
+                if (VideoCameraLocked) ApplyLockedVideoCamera();
+                else
+                {
+                    spatial?.EvaluateCamera(sceneCamera, songTime);
+                    blenderBga?.Evaluate(songTime - (chart.blenderBga?.timeOffsetSeconds ?? 0), sceneCamera, true);
+                }
                 SetPlaying(true); SetStatus("Preview started at playhead · Esc returns to editing");
             }
             else
@@ -312,7 +440,7 @@ namespace GeometryRhythm.ChartEditor
                     if (spatial.Visibility(path.id, songTime) <= .01f) continue;
                     Vector3 center = spatial.Point(path.id, SpatialDirector.NearDepth, songTime);
                     Vector3 tangent = spatial.Point(path.id, SpatialDirector.NearDepth + .12f, songTime) - center;
-                    Quaternion frame = Quaternion.LookRotation(tangent, spatial.RouteRotationAt(spatial.DistanceAtTime(songTime) + SpatialDirector.NearDepth) * Vector3.up);
+                    Quaternion frame = Quaternion.LookRotation(tangent, spatial.CameraUp(songTime));
                     var ring = new Vector3[33];
                     for (int i = 0; i < ring.Length; i++)
                     {
@@ -329,7 +457,8 @@ namespace GeometryRhythm.ChartEditor
             GUI.Label(new Rect(18, ToolbarHeight + 12, ViewWidth - 36, 28),
                 "PREVIEW  /  " + (playing ? "PLAYING" : songTime >= Duration ? "ENDED" : "PAUSED"), headingStyle);
             GUI.Label(new Rect(18, ToolbarHeight + 40, ViewWidth - 36, 32),
-                "Camera + paths + notes · Visual preview, no scoring · Space play / pause · Esc exit", smallStyle);
+                (VideoCameraLocked ? "Locked video view + paths + notes" : "Camera + paths + notes") +
+                " · Space play / pause · Esc exit", smallStyle);
         }
     }
 }
