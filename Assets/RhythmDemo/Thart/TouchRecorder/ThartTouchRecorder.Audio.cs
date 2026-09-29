@@ -11,7 +11,7 @@ namespace GeometryRhythm.Thart.TouchRecorder
 {
     /// <summary>
     /// 平板端 - 接收电脑端推送的音频，本地落盘并解码播放
-    /// 录制开始时在平板端播放，倒计时与音频同时开始
+    /// 预备拍数到 0 时才出声，播放起点就是录制时间原点
     /// </summary>
     public sealed partial class ThartTouchRecorder
     {
@@ -248,14 +248,6 @@ namespace GeometryRhythm.Thart.TouchRecorder
         {
             if (audioSource != null && audioSource.isPlaying)
                 audioSource.Stop();
-        }
-
-        /// <summary>倒计时剩余秒数（已开始录制时才有意义）</summary>
-        private float GetCountdownRemaining()
-        {
-            if (!inCountdown) return 0f;
-            float elapsed = (float)(AudioSettings.dspTime - recordingStartTime);
-            return Mathf.Max(0f, countdownSeconds - elapsed);
         }
 
         #endregion

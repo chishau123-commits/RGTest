@@ -35,11 +35,11 @@ namespace GeometryRhythm.Thart.TouchRecorder
         // 状态
         private ThartClient client;
         private RecordingState recordingState = RecordingState.Idle;
-        private double recordingStartTime;
+        private ThartRecordingClock recordingClock;
         private List<TouchSample> recordedSamples = new List<TouchSample>();
         private float lastSampleTime;
 
-        // 音频与倒计时
+        // 音频与预备拍
         private AudioSource audioSource;
         private float countdownSeconds;
         private bool inCountdown;
@@ -106,20 +106,33 @@ namespace GeometryRhythm.Thart.TouchRecorder
 
             if (recordingState == RecordingState.Recording)
             {
-                float timeSinceLastSample = Time.realtimeSinceStartup - lastSampleTime;
-                float sampleInterval = 1f / targetSampleRate;
-                if (timeSinceLastSample >= sampleInterval)
-                {
-                    CaptureTouchSample();
-                    lastSampleTime = Time.realtimeSinceStartup;
-                }
-                recordingDuration = AudioSettings.dspTime - recordingStartTime;
+                double now = AudioSettings.dspTime;
 
-                // 倒计时结束
-                if (inCountdown && recordingDuration >= countdownSeconds)
+                // 预备拍期间不采触控、录制时间恒为 0：音频要数到 0 才出声，
+                // 这段时间的按压不属于歌曲，记下来就等于把整首歌往后推。
+                if (recordingClock.InPreRoll(now))
                 {
-                    inCountdown = false;
-                    statusText = "正在录制...";
+                    recordingDuration = 0;
+                }
+                else
+                {
+                    if (inCountdown)
+                    {
+                        // 到原点的这一帧才真正开始：第一个采样点不必再等满一个间隔
+                        inCountdown = false;
+                        statusText = "正在录制...";
+                        lastSampleTime = Time.realtimeSinceStartup;
+                    }
+
+                    float timeSinceLastSample = Time.realtimeSinceStartup - lastSampleTime;
+                    float sampleInterval = 1f / targetSampleRate;
+                    if (timeSinceLastSample >= sampleInterval)
+                    {
+                        CaptureTouchSample();
+                        lastSampleTime = Time.realtimeSinceStartup;
+                    }
+
+                    recordingDuration = recordingClock.Elapsed(now);
                 }
             }
 
@@ -573,18 +586,18 @@ namespace GeometryRhythm.Thart.TouchRecorder
                 return;
             }
 
-            // 录制/倒计时：只有 16:9 录入框内是录入区，只画不拦截输入的内容
+            // 录制/预备拍：只有 16:9 录入框内是录入区，只画不拦截输入的内容
             DrawCaptureFrame(width, height);
 
             if (inCountdown)
             {
                 Rect frame = CaptureFrameLogical();
-                int remain = Mathf.Max(1, Mathf.CeilToInt(GetCountdownRemaining()));
+                int remain = recordingClock.CountdownLabel(AudioSettings.dspTime);
                 GUI.color = new Color(1f, 0.85f, 0.35f, 0.95f);
                 GUI.Label(new Rect(frame.x, frame.center.y - 135f, frame.width, 240f), remain.ToString(), Styles.CountdownLabel);
                 GUI.color = Color.white;
                 GUI.Label(new Rect(frame.x, frame.center.y + 110f, frame.width, 40f),
-                    "音频播放中 · 录入框内皆可触碰", Styles.HintBigLabel);
+                    "预备拍 · 数到 0 才开始播放和录入", Styles.HintBigLabel);
             }
 
             if (showRecordingHud) DrawRecordingHud(width);
@@ -644,7 +657,7 @@ namespace GeometryRhythm.Thart.TouchRecorder
                 FormatTime(Mathf.Max(0f, (float)recordingDuration)), Styles.HudTimeLabel);
 
             GUI.Label(new Rect(334f, 0, 620f, HudHeight),
-                (inCountdown ? "倒计时中" : "录入框内录入中")
+                (inCountdown ? "预备拍中" : "录入框内录入中")
                 + "   ·   " + recordedSamples.Count + " 帧"
                 + "   ·   " + Input.touchCount + " 触点", Styles.HudInfoLabel);
 
@@ -701,12 +714,12 @@ namespace GeometryRhythm.Thart.TouchRecorder
 
             if (canStart && GUI.Button(new Rect(btnX, btnY, btnSize, btnSize), "", Styles.EmptyButton))
             {
-                // 平板端本地快捷开始（3 秒倒计时，音频同步播放）
+                // 平板端本地快捷开始（3 秒预备拍，数到 0 才出声并开始录入）
                 StartRecording("{\"countdown\":3}");
             }
 
             GUI.Label(new Rect(0, btnY + btnSize + 24f, width, 34f),
-                canStart ? "点击开始（3 秒倒计时）" : "暂不可开始", Styles.StatsLabel);
+                canStart ? "点击开始（预备拍 3 秒）" : "暂不可开始", Styles.StatsLabel);
 
             GUI.Label(new Rect(0, btnY + btnSize + 64f, width, 30f),
                 showRecordingHud ? "录制时顶部是 " + (int)HudHeight + "px 计时条，录入区固定 16:9"
@@ -967,7 +980,8 @@ namespace GeometryRhythm.Thart.TouchRecorder
         #region Recording
 
         /// <summary>
-        /// 开始录制：音频与倒计时同时开始，录制时间原点 = 音频起点
+        /// 开始录制：先数 countdown 秒预备拍（不放音频、不采触控、录制时间停在 0），
+        /// 数到 0 的瞬间音频与录入同时开始，录制时间原点 = 音频起点
         /// </summary>
         private void StartRecording(string payload)
         {
@@ -997,19 +1011,20 @@ namespace GeometryRhythm.Thart.TouchRecorder
 
             recordingState = RecordingState.Recording;
 
-            // 留一点点缓冲，保证音频和录制时钟从同一时刻起算
-            recordingStartTime = AudioSettings.dspTime + 0.08;
+            // 预备拍：先数 countdown 秒，数到 0 才同时开始播放音频与录入。
+            // 录制时间原点 = 音频起点，倒计时不属于录制时间。
             countdownSeconds = Mathf.Max(0f, cd);
             inCountdown = countdownSeconds > 0.01f;
+            recordingClock = ThartRecordingClock.Start(AudioSettings.dspTime, countdownSeconds);
 
             recordedSamples.Clear();
             lastSampleTime = Time.realtimeSinceStartup;
 
-            // 倒计时期间也要播放音频 —— 播放起点与倒计时起点一致
-            StartSongPlayback(recordingStartTime);
+            // 音频排期在原点上：预备拍期间只是排期，还没有出声
+            StartSongPlayback(recordingClock.origin);
 
             statusText = inCountdown
-                ? ("倒计时 " + Mathf.RoundToInt(countdownSeconds) + " 秒")
+                ? ("预备拍 " + Mathf.RoundToInt(countdownSeconds) + " 秒")
                 : "正在录制...";
             showSettings = false;
 
@@ -1034,7 +1049,8 @@ namespace GeometryRhythm.Thart.TouchRecorder
             }
 
             recordingState = RecordingState.Stopping;
-            recordingDuration = AudioSettings.dspTime - recordingStartTime;
+            // 预备拍里就被停下：录制时间还是 0，回传的是空会话
+            recordingDuration = recordingClock.Elapsed(AudioSettings.dspTime);
             inCountdown = false;
 
             StopSongPlayback();
@@ -1061,7 +1077,7 @@ namespace GeometryRhythm.Thart.TouchRecorder
 
         private void CaptureTouchSample()
         {
-            double time = AudioSettings.dspTime - recordingStartTime;
+            double time = recordingClock.Elapsed(AudioSettings.dspTime);
             var touches = new List<TouchPoint>();
 
             for (int i = 0; i < Input.touchCount; i++)

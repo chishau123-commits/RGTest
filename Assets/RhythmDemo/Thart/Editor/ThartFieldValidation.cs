@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using GeometryRhythm;
@@ -159,7 +160,64 @@ namespace GeometryRhythm.Thart.EditorTools
                   notched.xMin >= 200f - .001f && notched.xMax <= 2160f + .001f,
                 "UI content never leaves the playfield: " + notched, ref checks);
 
+            // 预备拍：倒计时不属于录制时间。数数期间录制时间必须是 0、不采触控，
+            // 数到 0 音频与录入才同时开始 —— 否则整首歌会被数数往后推。
+            CheckPreRoll(ref checks);
+
             Debug.Log("THART_FIELD_VALIDATION_SUCCESS " + checks + " checks");
+        }
+
+        /// <summary>
+        /// 预备拍（3-2-1）：原点之前录制时间恒为 0，数到 0 才开始走。
+        /// 老算法把原点放在「现在 + 缓冲」，也就是倒计时没算进去 ——
+        /// 数数这几秒里播放头已经在走、触控也已经在采，整首歌被推后。
+        /// </summary>
+        static void CheckPreRoll(ref int checks)
+        {
+            const double now = 100.0;
+            const float countdown = 3f;
+            const double lead = ThartRecordingClock.LeadSeconds;
+            var clock = ThartRecordingClock.Start(now, countdown);
+
+            Check(Math.Abs(clock.origin - (now + lead + countdown)) < .000001,
+                "the origin is the end of the countdown, not its start: " + clock.origin, ref checks);
+
+            // 预备拍里：时间恒为 0，数字只从 3 数到 1（不会先闪一个 4）
+            var labels = new List<int>();
+            for (int i = 0; i < 100; i++)
+            {
+                double at = now + i * .08;
+                if (!clock.InPreRoll(at)) break;
+
+                Check(clock.Elapsed(at) == 0.0,
+                    "the recording clock stays at 0 through the whole pre-roll: t=" + (at - now), ref checks);
+                Check(clock.PreRollRemaining(at) > 0.0,
+                    "a pre-roll instant always has time left: t=" + (at - now), ref checks);
+
+                int label = clock.CountdownLabel(at);
+                if (labels.Count == 0 || labels[labels.Count - 1] != label) labels.Add(label);
+            }
+            Check(string.Join(",", labels) == "3,2,1",
+                "the countdown reads 3,2,1 and never 0 or 4: " + string.Join(",", labels), ref checks);
+
+            // 原点是录制的第一个瞬间，也正好是预备拍的结束
+            Check(!clock.InPreRoll(clock.origin) && clock.Elapsed(clock.origin) == 0.0 &&
+                  clock.PreRollRemaining(clock.origin) == 0.0,
+                "the origin is the first instant of recording, not of the pre-roll", ref checks);
+            Check(Math.Abs(clock.Elapsed(clock.origin + 1.25) - 1.25) < .000001,
+                "after the origin the clock is plain song time: " + clock.Elapsed(clock.origin + 1.25), ref checks);
+
+            // 不设预备拍时只差一个排期缓冲，原点之前照样是 0
+            var immediate = ThartRecordingClock.Start(now, 0f);
+            Check(Math.Abs(immediate.origin - (now + lead)) < .000001 && immediate.Elapsed(now) == 0.0,
+                "a zero countdown still waits for the scheduling lead: " + immediate.origin, ref checks);
+
+            // 旧原点（倒计时没算进去）：数到一半录制时间就已经走了一秒多，
+            // 这就是「倒计时期间其实已经在录了」的那条。
+            var old = new ThartRecordingClock { origin = now + lead };
+            Check(old.Elapsed(now + lead + countdown * .5f) > 1.0,
+                "the old origin is what ran the recording through the countdown: " +
+                old.Elapsed(now + lead + countdown * .5f), ref checks);
         }
 
         static void CheckFrame(Vector2 screen, float expectW, float expectH, float expectX, float expectY, ref int checks)
