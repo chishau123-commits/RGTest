@@ -4,7 +4,7 @@ Thart 是「平板跟着歌点，电脑端生成铺面」的制谱流程：平�
 录触控 → `ThartChartBuilder` 转成音符 → 电脑端 `ThartEditorController` 编辑/预览 →
 打成 `.thr` 谱面包给游玩端用。
 
-本文记录三件容易再次踩坑的事：**16:9 坐标域**、**二维分列**、**时间轴拖动窗口**。
+本文记录四件容易再次踩坑的事：**16:9 坐标域**、**二维分列**、**时间轴拖动窗口**、**预备拍**。
 
 ## 1. 一切坐标都在 16:9 里
 
@@ -63,11 +63,28 @@ Thart 是「平板跟着歌点，电脑端生成铺面」的制谱流程：平�
 缩放 8× 时按 0.9 的位置按住不动，20 帧就能从 60s 跑到 190s，也就是「指针一拖就飞出去」。
 锁窗口后 `TimelineTimeAtLocalX()` 是纯函数：同一个鼠标位置永远给出同一个时间。
 
-## 4. 自检与工具
+## 4. 预备拍：倒计时不属于录制时间
+
+按下开始后的那几秒（默认 3 秒）是**预备拍**，不是歌曲开头：
+
+| 预备拍期间 | 数到 0 的那一刻 |
+| --- | --- |
+| 不播音频（音频只是被 `PlayScheduled` 排到原点）、不采触控、录制时间恒为 0，编辑器播放头停在原地 | 音频与录入同时开始；录制时间原点 = 音频起点 = 歌曲 0 秒 |
+
+两端共用 `ThartRecordingClock`（`Thart/Core/ThartRecordingClock.cs`）：`origin` 之前
+`Elapsed()` 恒为 0、`InPreRoll()` 为真、数字从 `countdown` 数到 1。
+排期缓冲 `LeadSeconds = 0.08` 不算进数字，所以不会先闪一个「4」。
+
+**踩过的坑**：以前倒计时和音频同时起算（原点 = 现在 + 一点点缓冲），于是数数期间
+录制时间已经在走、触控也已经在采 —— 看着就是「倒计时的时候指针还在动，其实已经在录了」。
+这会把整首歌连同时间轴播放头一起往后推 3 秒，数数期间乱碰还会直接进数据。
+自检里 `the old origin is what ran the recording through the countdown` 钉的就是这条。
+
+## 5. 自检与工具
 
 | 用途 | 命令 |
 | --- | --- |
-| 坐标域/分列/拖动窗口/视口数学回归（28 项） | `Unity.exe -batchmode -quit -projectPath <项目> -executeMethod GeometryRhythm.Thart.EditorTools.ThartFieldValidation.RunBatch` |
+| 坐标域/分列/拖动窗口/视口/预备拍数学回归（155 项） | `Unity.exe -batchmode -quit -projectPath <项目> -executeMethod GeometryRhythm.Thart.EditorTools.ThartFieldValidation.RunBatch` |
 | 用一份合成四角录制核对编辑器画的位置 | `ThartEditor.exe -thartRecording Builds\verify\thart-corners.json` |
 | 自动截图（可带按键，例如 `-Keys 3` 切预览） | `Tools\Thart\thart_corner_shot.ps1` |
 
@@ -75,7 +92,8 @@ Thart 是「平板跟着歌点，电脑端生成铺面」的制谱流程：平�
 同位置重复按复用同列、同时按下时「同点合并 / 异角不合并」、抬指帧丢失时不把两次按压平均、
 锁窗口拖动漂移为 0（并断言旧算法确实会 runaway）、`GameViewport.Frame()` 在 1920×1080 /
 2400×1080 / 1280×1024 下都精确 16:9 且居中、平板录入框在 16:10 / 20:9 / 16:9 / 4:3 下
-都是精确 16:9 且不压到上下两条栏、录入框四角正好映射到 0%/100% 且框外按压被拒绝。
+都是精确 16:9 且不压到上下两条栏、录入框四角正好映射到 0%/100% 且框外按压被拒绝、
+预备拍期间录制时间恒为 0 且数字只从 3 数到 1（并断言旧原点确实会在数数期间就开始走）。
 
 真机（Xiaomi Pad，3048×2032）实测：录入框量出来是 `3040×1710 @ (4,186)`，
 比例 `1.77778`；四个角按下去记下来的是 `5.99%/6.02%`、`94.01%/6.02%`、

@@ -37,7 +37,7 @@ namespace GeometryRhythm.Thart.Editor
         private ThartEditorMode mode = ThartEditorMode.Recording;
         private ThartServer server;
         private RecordingState recordingState = RecordingState.Idle;
-        private double recordingStartTime;
+        private ThartRecordingClock recordingClock;
         private double recordingDuration;
 
         // 录制会话（解决开始/停止不同步与数据丢失）
@@ -121,7 +121,7 @@ namespace GeometryRhythm.Thart.Editor
         private string customGridInput = "";
         private bool autoSnapAfterRecording = true;
 
-        // 倒计时（录制开始后先倒数，期间平板端同时播放音频）
+        // 预备拍（数到 0 才开始播放音频与录入，录制时间原点 = 音频起点）
         private float countdownSeconds = 3f;
         private bool inCountdown;
         private bool playAudioOnDesktop;
@@ -252,17 +252,19 @@ namespace GeometryRhythm.Thart.Editor
                 }
             }
 
-            // 录制时更新时钟（倒计时和录制共用同一个起点：平板端音频也从这一刻开始播放）
+            // 录制时更新时钟（预备拍期间时间轴停在 0：倒计时不属于录制时间）
             if (recordingState == RecordingState.Recording)
             {
-                recordingDuration = AudioSettings.dspTime - recordingStartTime;
-                songTime = recordingDuration;
+                double now = AudioSettings.dspTime;
 
-                if (inCountdown && recordingDuration >= countdownSeconds)
+                if (inCountdown && !recordingClock.InPreRoll(now))
                 {
                     inCountdown = false;
                     UpdateStatus("录制中...");
                 }
+
+                recordingDuration = recordingClock.Elapsed(now);
+                songTime = recordingDuration;
             }
 
             // 等待平板确认就绪：超时自动放弃，避免一直卡在「正在与平板同步」
@@ -461,10 +463,13 @@ namespace GeometryRhythm.Thart.Editor
                         // 否则下面会一直认为「没有活动会话」而把触控数据全部丢掉。
                         activeSession = sess >= 0 ? sess : ++sessionId;
                         recordingState = RecordingState.Recording;
-                        recordingStartTime = AudioSettings.dspTime;
+                        // 平板本地启动也带 countdown：照同一套规则接管时钟，
+                        // 预备拍期间电脑端同样停在 0，等原点到了再算录制时间。
+                        double tabletCountdown = Math.Max(0.0, JsonNum(json, "countdown", 0));
+                        recordingClock = ThartRecordingClock.Start(AudioSettings.dspTime, (float)tabletCountdown);
                         recordingDuration = 0;
                         songTime = 0;
-                        inCountdown = false;
+                        inCountdown = tabletCountdown > 0.01;
                         waitingForFullData = false;
                         fullDataRetries = 0;
                         liveSamples.Clear();
@@ -492,7 +497,7 @@ namespace GeometryRhythm.Thart.Editor
                     {
                         recordingState = RecordingState.Stopping;
                         inCountdown = false;
-                        recordingDuration = Math.Max(0.0, AudioSettings.dspTime - recordingStartTime);
+                        recordingDuration = recordingClock.Elapsed(AudioSettings.dspTime);
                         waitingForFullData = true;
                         stopRequestDsp = AudioSettings.dspTime;
                         lastRequestDsp = stopRequestDsp;
@@ -737,7 +742,7 @@ namespace GeometryRhythm.Thart.Editor
         }
 
         /// <summary>
-        /// 第二步：平板已就绪，正式进入录制（音频与倒计时同一起点）
+        /// 第二步：平板已就绪，正式进入录制（先走预备拍，数到 0 音频与录入同时开始）
         /// </summary>
         private void BeginRecordingInternal(int sess)
         {
@@ -754,12 +759,14 @@ namespace GeometryRhythm.Thart.Editor
             liveSamples.Clear();
             samplesThisSession = 0;
 
-            // 倒计时起点 == 音频起点 == 录制时间原点
-            recordingStartTime = AudioSettings.dspTime + 0.08;
+            // 预备拍：先数 countdown 秒，数到 0 才同时开始播音频与录入。
+            // 倒计时不属于录制时间，所以播放头在预备拍期间停在 0 不动。
+            recordingClock = ThartRecordingClock.Start(AudioSettings.dspTime, countdownSeconds);
             inCountdown = countdownSeconds > 0.01f;
 
             songTime = 0;
-            if (playAudioOnDesktop) StartPlaybackFrom(0);
+            // 电脑端要不要一起出声：同样排期在原点上，预备拍期间不出声
+            if (playAudioOnDesktop) StartPlaybackFrom(0, recordingClock.origin);
 
             string payload = "{\"session\":" + activeSession
                 + ",\"countdown\":" + countdownSeconds.ToString("F2")
@@ -768,7 +775,7 @@ namespace GeometryRhythm.Thart.Editor
             server.BroadcastMessage(ThartMessageType.StartRecording, payload);
 
             UpdateStatus(inCountdown
-                ? ("倒计时 " + Mathf.RoundToInt(countdownSeconds) + " 秒，音频已在平板端播放")
+                ? ("预备拍 " + Mathf.RoundToInt(countdownSeconds) + " 秒，数到 0 才开始播放与录入")
                 : "开始录制...");
         }
 
@@ -785,7 +792,8 @@ namespace GeometryRhythm.Thart.Editor
             // 通知平板停止录制
             server.BroadcastMessage(ThartMessageType.StopRecording, "{\"session\":" + activeSession + "}");
 
-            recordingDuration = Math.Max(0.0, AudioSettings.dspTime - recordingStartTime);
+            // 预备拍里就被停下：录制时间还是 0
+            recordingDuration = recordingClock.Elapsed(AudioSettings.dspTime);
 
             // 继续接收实时采样，等平板回传完整数据
             waitingForFullData = true;
@@ -895,7 +903,12 @@ namespace GeometryRhythm.Thart.Editor
 
         #region Playback
 
-        private void StartPlaybackFrom(double startTime)
+        /// <summary>
+        /// 从 <paramref name="startTime"/> 开始走带。
+        /// <paramref name="scheduleDsp"/> 给一个未来的 dsp 时刻时，音频被排期到那个时刻才出声
+        /// （预备拍就是这样把电脑端的音频对齐到录制原点的）；缺省是「现在 + 一点缓冲」。
+        /// </summary>
+        private void StartPlaybackFrom(double startTime, double scheduleDsp = -1)
         {
             double duration = GetDuration();
             if (duration <= 0) return;
@@ -907,7 +920,7 @@ namespace GeometryRhythm.Thart.Editor
             {
                 // 没有音频（例如只加载了谱面）：用 dsp 时钟静默走带，预览依然可用
                 transportSilent = true;
-                transportDspStart = AudioSettings.dspTime;
+                transportDspStart = scheduleDsp > 0 ? scheduleDsp : AudioSettings.dspTime;
                 return;
             }
 
@@ -919,7 +932,7 @@ namespace GeometryRhythm.Thart.Editor
             audioSource.time = (float)transportSongStart;
 
             // 起点只记录一次：先排期，再用同一个 dsp 时刻当时间原点
-            double startDsp = AudioSettings.dspTime + 0.05;
+            double startDsp = scheduleDsp > 0 ? scheduleDsp : AudioSettings.dspTime + 0.05;
             audioSource.PlayScheduled(startDsp);
             transportDspStart = startDsp;
         }

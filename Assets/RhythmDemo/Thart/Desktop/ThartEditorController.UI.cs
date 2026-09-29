@@ -450,8 +450,8 @@ namespace GeometryRhythm.Thart.Editor
                 GUILayout.Space(8);
                 if (inCountdown)
                 {
-                    float remain = Mathf.Max(0f, countdownSeconds - (float)recordingDuration);
-                    InfoRow("倒计时", Mathf.CeilToInt(remain) + " 秒（平板正在播放音频）", Styles.Warn);
+                    int remain = recordingClock.CountdownLabel(AudioSettings.dspTime);
+                    InfoRow("预备拍", remain + " 秒（数到 0 才开始播放与录入）", Styles.Warn);
                 }
                 else
                 {
@@ -492,10 +492,10 @@ namespace GeometryRhythm.Thart.Editor
                 }
             }
 
-            SectionHeader("倒计时与播放");
-            GUILayout.Label("开始前倒数 " + countdownSeconds.ToString("F0") + " 秒", Styles.Label);
+            SectionHeader("预备拍与播放");
+            GUILayout.Label("开始前预备拍 " + countdownSeconds.ToString("F0") + " 秒", Styles.Label);
             countdownSeconds = Mathf.Round(GUILayout.HorizontalSlider(countdownSeconds, 0f, 8f));
-            GUILayout.Label("倒计时期间平板端同步播放音频", Styles.SmallLabel);
+            GUILayout.Label("数到 0 才同时开始播放音频与录入", Styles.SmallLabel);
             GUILayout.Space(4);
             playAudioOnDesktop = GUILayout.Toggle(playAudioOnDesktop, "  电脑端同时播放", Styles.Foldout);
 
@@ -832,7 +832,7 @@ namespace GeometryRhythm.Thart.Editor
             GUILayout.FlexibleSpace();
             if (recordingState == RecordingState.Recording && inCountdown)
             {
-                int remain = Mathf.Max(1, Mathf.CeilToInt(countdownSeconds - (float)recordingDuration));
+                int remain = recordingClock.CountdownLabel(AudioSettings.dspTime);
                 GUI.color = Styles.Warn;
                 GUILayout.Label(remain.ToString(), Styles.BigCountdownLabel);
                 GUI.color = Color.white;
@@ -848,7 +848,7 @@ namespace GeometryRhythm.Thart.Editor
 
             string hint;
             if (recordingState == RecordingState.Recording)
-                hint = inCountdown ? "音频已在平板端播放，倒计时结束后开始记录" : "请在平板上的 16:9 录入框内跟随音乐点击";
+                hint = inCountdown ? "预备拍中：数到 0 平板才开始播放音频并录入" : "请在平板上的 16:9 录入框内跟随音乐点击";
             else if (recordingState == RecordingState.Stopping)
                 hint = "正在等平板把完整触控数据发回来";
             else if (!HasAudio) hint = "请先在左侧「音频」面板导入音频";
