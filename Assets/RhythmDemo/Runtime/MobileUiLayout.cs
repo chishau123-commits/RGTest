@@ -3,13 +3,16 @@ using UnityEngine;
 namespace GeometryRhythm
 {
     /// <summary>Shared landscape UI safe-area fit. Only UI transforms move; the world camera
-    /// and gameplay hit projection are untouched. Coordinates are physical screen pixels.</summary>
+    /// and gameplay hit projection are untouched. Coordinates are physical screen pixels.
+    /// The playfield is 16:9, so UI content is also limited to that frame: on a wider or
+    /// taller display the boards stay inside the playfield instead of over the mattes.</summary>
     public static class MobileUiLayout
     {
         public const float Width=1600,Height=900,TouchTarget=112;
         // Assigned only by the explicit frontend smoke test, never from normal player settings.
         public static Rect? SimulatedSafeArea;
-        public static Rect SafeArea => SimulatedSafeArea??Screen.safeArea;
+        /// <summary>Device safe area, limited to the 16:9 playfield.</summary>
+        public static Rect SafeArea => GameViewport.Content(SimulatedSafeArea??Screen.safeArea);
         public static float FitScale(Vector2 canvasSize,Vector2 screenSize,Rect safe,out Vector2 center)
         {
             float sx=canvasSize.x/Mathf.Max(1,screenSize.x),sy=canvasSize.y/Mathf.Max(1,screenSize.y);

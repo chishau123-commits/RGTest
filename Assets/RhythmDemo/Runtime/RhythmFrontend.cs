@@ -17,6 +17,22 @@ namespace GeometryRhythm
         public ChartData Chart;
         public double Duration;
         public int MaxPaths;
+        Texture2D cover;
+        bool coverResolved;
+        /// <summary>Chart cover art from Resources, or null when the chart ships none and the
+        /// menu keeps its procedural artwork. Decoded on first use, not for the whole library.</summary>
+        public Texture2D Cover
+        {
+            get
+            {
+                if(!coverResolved)
+                {
+                    coverResolved=true;
+                    cover=string.IsNullOrEmpty(Chart.coverResource)?null:Resources.Load<Texture2D>(Chart.coverResource);
+                }
+                return cover;
+            }
+        }
         public string Title => string.IsNullOrWhiteSpace(Chart.title) ? Asset.name : Chart.title;
         public string ShortTitle => Title.Contains(" / ") ? Title.Substring(Title.LastIndexOf(" / ",StringComparison.Ordinal)+3) : Title;
         public string Bpm
@@ -150,6 +166,14 @@ namespace GeometryRhythm
             if(index<0 || index>=songs.Count) return;
             Selected=index;view.ShowSongs(songs,Selected);
         }
+        /// <summary>Reading speed is one personal preference, shared by the song list, the
+        /// pause sheet and the desktop chart editor. It never edits the chart file.</summary>
+        public void SetNoteSpeed(float value)
+        {
+            NoteScrollSettings.Save(value);
+            if(session!=null) session.SetNoteSpeed(NoteScrollSettings.Load());
+        }
+        public void ChangeNoteSpeed(float delta)=>SetNoteSpeed(NoteScrollSettings.Load()+delta);
         public void Play(bool automatic)
         {
             if(songs.Count==0 || Page==FrontendPage.Playing || Page==FrontendPage.Loading) return;
@@ -184,9 +208,19 @@ namespace GeometryRhythm
             while(session!=null && !session.Ready && session.LoadError==null && Time.realtimeSinceStartup<deadline) yield return null;
             bool passed=session!=null && session.Ready && Page==FrontendPage.Title && session.IsPaused;
             if(!passed) {Debug.LogError("GEOMETRY_FRONTEND_SMOKE initialization failed");Application.Quit(1);yield break;}
+            // A failing step has to name itself: this report is read from CI and from a
+            // hidden window where no interactive inspection is possible.
+            var trace=new System.Text.StringBuilder();
+            trace.AppendLine("init "+passed+" page="+Page+" songs="+songs.Count);
             yield return null;passed &= Capture(directory,"ui-title");
             passed &= view.Invoke("Open songs") && Page==FrontendPage.Songs;
             yield return null;passed &= Capture(directory,"ui-songs");
+            // Reading speed: the song list and the pause sheet write one shared preference.
+            float listedSpeed=NoteScrollSettings.Load();
+            passed &= view.Invoke("Speed up") && Mathf.Abs(NoteScrollSettings.Load()-(listedSpeed+NoteScrollSettings.Step))<.001f
+                && view.SpeedText==(listedSpeed+NoteScrollSettings.Step).ToString("0.##");
+            passed &= view.Invoke("Speed down") && Mathf.Abs(NoteScrollSettings.Load()-listedSpeed)<.001f;
+            trace.AppendLine("song list speed "+listedSpeed.ToString("0.##")+" -> "+NoteScrollSettings.Load().ToString("0.##"));
             // Inspect short-lived and fallback screens without changing the shipped catalog.
             view.ShowLoading(songs[Selected].ShortTitle);yield return null;
             passed &= Capture(directory,"ui-loading");
@@ -201,6 +235,11 @@ namespace GeometryRhythm
             // Exercise pause -> return and confirm that menu time does not advance.
             session.TogglePause();yield return null;
             passed &= Capture(directory,"ui-pause",true);
+            // The pause sheet exposes the same preference through its own buttons.
+            float pausedSpeed=NoteScrollSettings.Load();
+            passed &= PressHudButton("Speed up") && Mathf.Abs(session.NoteSpeed-(pausedSpeed+NoteScrollSettings.Step))<.001f;
+            passed &= PressHudButton("Speed down") && Mathf.Abs(session.NoteSpeed-pausedSpeed)<.001f;
+            trace.AppendLine("pause sheet speed "+pausedSpeed.ToString("0.##")+" -> "+session.NoteSpeed.ToString("0.##"));
             session.ReturnToSongs();double frozen=session.CurrentTime;
             yield return null;passed &= Page==FrontendPage.Songs && session.IsPaused && session.CurrentTime==frozen;
             passed &= view.Invoke("Play chart");yield return null;yield return null;
@@ -212,6 +251,7 @@ namespace GeometryRhythm
             ShowSongs();view.Invoke("Watch autoplay");yield return null;yield return null;
             session.Engine.Advance(session.Duration,true);ShowResults();
             passed &= Result.Score==1000000 && Result.Perfect==songs[Selected].Chart.notes.Length && Result.Automatic;
+            trace.AppendLine("autoplay score="+Result.Score+" perfect="+Result.Perfect+" expected="+songs[Selected].Chart.notes.Length);
             yield return null;passed &= Capture(directory,"ui-results");
             passed &= view.Invoke("Back to songs") && Page==FrontendPage.Songs;
             passed &= view.Invoke("Back to title") && Page==FrontendPage.Title;
@@ -223,24 +263,45 @@ namespace GeometryRhythm
             AddSong(alternateAsset);ShowSongs();
             yield return null;
             // Exercise actual ScrollRect pointer handlers, including end-of-drag paging.
-            passed &= SwipeForSmoke(-1) && Selected==bundledCount;
+            // One deliberate swipe advances one card, so a bigger shipped catalogue needs
+            // several; walk to the appended entry instead of assuming a single page.
+            bool pagedToQa=false;
+            for(int page=0;page<=songs.Count && !pagedToQa;page++)
+            { passed &= SwipeForSmoke(-1);pagedToQa=Selected==bundledCount; }
+            passed &= pagedToQa;
             yield return null;passed &= Capture(directory,"ui-carousel-qa");
-            passed &= SwipeForSmoke(1) && Selected==0;
-            passed &= view.Invoke("Select song "+bundledCount) && Selected==bundledCount;
+            bool pagedBack=false;
+            for(int page=0;page<=songs.Count && !pagedBack;page++)
+            { passed &= SwipeForSmoke(1);pagedBack=Selected==0; }
+            passed &= pagedBack;
+            trace.AppendLine("carousel qa="+pagedToQa+" back="+pagedBack+" selected="+Selected+" bundled="+bundledCount+" songs="+songs.Count);
+            bool selectedQa=view.Invoke("Select song "+bundledCount) && Selected==bundledCount;
+            passed &= selectedQa;
             passed &= view.Invoke("Play chart");
             deadline=Time.realtimeSinceStartup+30;
             while(Page==FrontendPage.Loading && Time.realtimeSinceStartup<deadline) yield return null;
             yield return null;
-            passed &= Page==FrontendPage.Playing && session.Chart.title==alternate.title
-                && FindObjectsOfType<Camera>().Length==1 && FindObjectsOfType<AudioListener>().Length==1;
+            string alternateTitle=session.Chart==null?null:session.Chart.title;
+            int cameraCount=FindObjectsOfType<Camera>().Length,listenerCount=FindObjectsOfType<AudioListener>().Length;
+            bool alternatePlaying=Page==FrontendPage.Playing && alternateTitle==alternate.title
+                && cameraCount==1 && listenerCount==1;
+            trace.AppendLine("alternate ok="+alternatePlaying+" selectedQa="+selectedQa+" page="+Page+" title="+alternateTitle+
+                " expected="+alternate.title+" error="+(session.LoadError??"none")+" cameras="+cameraCount+" listeners="+listenerCount);
+            passed &= alternatePlaying;
             ShowSongs();SelectSong(0);Play(false);
             deadline=Time.realtimeSinceStartup+30;
             while(Page==FrontendPage.Loading && Time.realtimeSinceStartup<deadline) yield return null;
             yield return null;
-            passed &= Page==FrontendPage.Playing && session.Chart.title==songs[0].Chart.title
-                && session.Engine.Judged==0 && FindObjectsOfType<Camera>().Length==1;
+            string returnedTitle=session.Chart==null?null:session.Chart.title;
+            cameraCount=FindObjectsOfType<Camera>().Length;
+            bool returned=Page==FrontendPage.Playing && returnedTitle==songs[0].Chart.title
+                && session.Engine.Judged==0 && cameraCount==1;
+            trace.AppendLine("return ok="+returned+" page="+Page+" title="+returnedTitle+" expected="+songs[0].Chart.title+
+                " judged="+session.Engine.Judged+" cameras="+cameraCount);
+            passed &= returned;
             ShowTitle();songs.RemoveAt(bundledCount);Destroy(alternateAsset);
-            File.WriteAllText(Path.Combine(directory,"frontend-smoke.txt"),"PASS="+passed+"\nSongs="+songs.Count+"\nAutoScore="+Result.Score+"\nScreen="+Screen.width+"x"+Screen.height+"\nSafeArea="+MobileUiLayout.SafeArea+"\nTouchTargets>=112=True\nFlow=Title/Songs/Swipe/Play/Pause/Return/Manual/Results/Retry/Autoplay/Results/Title\n");
+            File.WriteAllText(Path.Combine(directory,"frontend-smoke.txt"),"PASS="+passed+"\nSongs="+songs.Count+"\nAutoScore="+Result.Score+"\nScreen="+Screen.width+"x"+Screen.height+"\nSafeArea="+MobileUiLayout.SafeArea+"\nTouchTargets>=112=True\nFlow=Title/Songs/Swipe/Play/Pause/Return/Manual/Results/Retry/Autoplay/Results/Title\n"
+                +"Trace:\n"+trace);
             MobileUiLayout.SimulatedSafeArea=null;
             Debug.Log("GEOMETRY_FRONTEND_SMOKE "+(passed?"PASS":"FAIL"));Application.Quit(passed?0:1);
         }
@@ -253,6 +314,19 @@ namespace GeometryRhythm
             c.OnInitializePotentialDrag(e);c.OnBeginDrag(e);
             e.position=start+new Vector2(c.viewport.TransformVector(Vector3.right*c.Stride*.65f).magnitude*direction,0);
             c.OnDrag(e);c.OnEndDrag(e);return true;
+        }
+        /// <summary>Invokes a real gameplay-HUD button by name, the same way a player tap does.</summary>
+        bool PressHudButton(string name)
+        {
+            foreach(var candidate in session.GetComponentsInChildren<Canvas>(true))
+                if(candidate.name=="Gameplay HUD")
+                    foreach(var button in candidate.GetComponentsInChildren<Button>(true))
+                        if(((RectTransform)button.transform).name==name)
+                        {
+                            if(!button.interactable) return false;
+                            button.onClick.Invoke();return true;
+                        }
+            return false;
         }
         bool Capture(string directory,string name,bool captureHud=false)
         {
@@ -269,7 +343,11 @@ namespace GeometryRhythm
             float oldPlane=hud!=null?hud.planeDistance:0;
             if(hud!=null){hud.renderMode=RenderMode.ScreenSpaceCamera;hud.worldCamera=camera;hud.planeDistance=.5f;}
             view.UseCaptureCamera(camera);Canvas.ForceUpdateCanvases();
-            camera.targetTexture=target;camera.Render();RenderTexture.active=target;
+            camera.targetTexture=target;
+            // The QA target is a fixed 16:9 frame that also renders the HUD through this
+            // camera, so the live playfield letterbox must not shrink the viewport here.
+            GameViewport.Apply(camera);
+            camera.Render();RenderTexture.active=target;
             var texture=new Texture2D(width,height,TextureFormat.RGB24,false);
             texture.ReadPixels(new Rect(0,0,width,height),0,0);texture.Apply();
             // A dark theme may legitimately have a nearly black center. Test image contrast
@@ -282,6 +360,7 @@ namespace GeometryRhythm
             {var r=(RectTransform)b.transform;valid &= r.rect.width>=112 && r.rect.height>=112;}
             File.WriteAllBytes(Path.Combine(directory,name+".png"),texture.EncodeToPNG());
             camera.targetTexture=null;RenderTexture.active=previous;view.UseCaptureCamera(null);
+            if(session!=null) session.ApplyPlayfieldViewport();
             if(hud!=null){hud.renderMode=oldMode;hud.worldCamera=oldCamera;hud.planeDistance=oldPlane;}
             RenderTexture.ReleaseTemporary(target);Destroy(texture);return valid;
         }
