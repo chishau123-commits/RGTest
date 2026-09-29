@@ -6,12 +6,63 @@
 /UserSettings/
 /Output/
 *.apk
-/.validation/
-/.validation-mobile/
+# 批处理验证用的工程副本（各自带一份 Unity Library，随时可再生）
+/.validation*/
 /Builds/
-# ComfyUI credentials and anything downloaded from a generation run
-/BGA/tools/comfy.env
-/BGA/tools/autodl.env
-# Bootstrap Python packages (numpy) and scratch rebuilt by BGA/tools/*.py
-/BGA/tools/pylibs/
-/.buildtmp/
+# ComfyUI 管线：素材、渲染成品、下载依赖（ffmpeg 之类）全在 BGA/ 下，一律不进 git
+# （凭据本来也不该进；仓库里目前 BGA/ 下没有任何被跟踪的文件）
+/BGA/
+/.buildtmp*/
+
+# Agent 临时产物：本地留着，但不进 PR
+# 网络/环境探测残留，例如 _net.txt
+/_*.txt
+# 根目录的一次性调研报告；正式结论写进 Docs/
+/*-research.md
+# 看门狗一类的运行日志
+*.log
+# Unity / IDE 自动生成的工程文件（打开工程时重建）
+*.csproj
+*.sln
+
+# 资源文件：本地留着，不直接上传（要版本化就走 Git LFS 或外部存储，见 Docs/）
+# 桌面编辑器的选曲目录，运行时由 ThartAudioLocator 扫描：歌自己往里放
+/Songs/
+# 原始音频 / 视频 / Blender 工程 / 贴图 / 模型 / 压缩包与二进制工具
+*.wav
+*.mp3
+*.flac
+*.aiff
+*.aif
+*.m4a
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.blend
+*.blend1
+*.blend2
+*.psd
+*.exr
+*.tif
+*.tiff
+*.fbx
+*.obj
+*.zip
+*.7z
+*.rar
+*.exe
+*.dll
+*.pdb
+*.aab
+*.unitypackage
+# 系统 / 编辑器 / IDE 常见垃圾
+.DS_Store
+Thumbs.db
+*~
+*.tmp
+/.vs/
+/.idea/
+sysinfo.txt
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
