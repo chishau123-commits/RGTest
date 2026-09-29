@@ -1,7 +1,9 @@
 {
     "name": "GeometryRhythm.Runtime",
     "rootNamespace": "GeometryRhythm",
-    "references": [],
+    "references": [
+        "glTFast"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
