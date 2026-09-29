@@ -86,7 +86,14 @@ Thart 是「平板跟着歌点，电脑端生成铺面」的制谱流程：平�
 | --- | --- |
 | 坐标域/分列/拖动窗口/视口/预备拍数学回归（155 项） | `Unity.exe -batchmode -quit -projectPath <项目> -executeMethod GeometryRhythm.Thart.EditorTools.ThartFieldValidation.RunBatch` |
 | 用一份合成四角录制核对编辑器画的位置 | `ThartEditor.exe -thartRecording Builds\verify\thart-corners.json` |
-| 自动截图（可带按键，例如 `-Keys 3` 切预览） | `Tools\Thart\thart_corner_shot.ps1` |
+| 截图 | 在编辑器窗口里按 **F9**，写到 `Builds\ThartEditor\thart_editor_screenshot.png` |
+| 接平板（`adb reverse` 转发） | `Tools\Thart\connect_tablet.ps1`；转发丢了常驻 `tablet_watchdog.ps1` 补 |
+
+截图用编辑器自带的 F9（`ThartEditorController.cs` 的 `Input.GetKeyDown(KeyCode.F9)` → `ScreenCapture.CaptureScreenshot`）。
+不要再用外部脚本抓窗口：`CopyFromScreen` / `PrintWindow` 都要额外操心焦点、DPI 与窗口遮挡，
+而 F9 存的是游戏自己的帧。以前 `Tools\Thart\` 下那批「启动窗口 + 模拟点击 + 抓屏」脚本已按这条删掉，
+只剩「一条命令替不了」的三个：adb 转发（`adb` 不在 PATH 上，在 Unity 的 platform-tools 里）、
+转发看门狗、以及 store-only 重打包。
 
 `ThartFieldValidation` 覆盖：16:9 比例与四角世界坐标、四角录入 → 四条不同列、
 同位置重复按复用同列、同时按下时「同点合并 / 异角不合并」、抬指帧丢失时不把两次按压平均、
