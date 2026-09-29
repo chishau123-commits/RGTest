@@ -17,6 +17,37 @@ namespace GeometryRhythm
         readonly ChartData chart;
         readonly TempoMap tempo;
         readonly StageSpline route;
+        public readonly VideoChartSpace VideoSpace;
+        public float NoteSpeedMultiplier { get; private set; }
+        public float NoteSpawnPercent { get; private set; } = NoteSpawnSettings.Default;
+        // A chart without a video space owns a fixed world route, so its approach window can
+        // only be read as a flight time. The shared reading speed scales that time; the
+        // recommended speed returns the authored window exactly, and the clamp keeps the
+        // extreme ends of the preference from flooding or emptying the screen.
+        const float MinimumApproachSeconds = .35f, MaximumApproachSeconds = 12;
+        public float ApproachSeconds => VideoSpace != null ? chart.approachSeconds
+            : Mathf.Clamp(chart.approachSeconds * NoteScrollSettings.Default / NoteSpeedMultiplier,
+                MinimumApproachSeconds, MaximumApproachSeconds);
+        /// <summary>Personal reading speed. It never touches ticks, BPM, offsets or geometry,
+        /// only how much of the path is in flight.</summary>
+        public void SetNoteSpeed(float speed)
+        {
+            float sanitized = NoteScrollSettings.Sanitize(speed);
+            if (Mathf.Abs(sanitized - NoteSpeedMultiplier) < .0001f) return;
+            NoteSpeedMultiplier = sanitized;
+        }
+        /// <summary>Shorten the visible path without changing flight speed or hit timing.</summary>
+        public void SetNoteSpawnPosition(float percent) => NoteSpawnPercent = NoteSpawnSettings.Sanitize(percent);
+        // Notes enter at the drawn endpoint. Geometry still samples the full authored
+        // path, so moving the endpoint cannot move a note already in flight.
+        public float NoteSpawnDepth => NearDepth + (FarDepth - NearDepth) * NoteSpawnPercent / 100;
+        public float VisiblePathFarDepth => NoteSpawnDepth;
+        public double NoteLookaheadSeconds(double time)
+        {
+            if (VideoSpace == null) return ApproachSeconds * NoteSpawnPercent / 100;
+            float targetZ = VideoSpace.CameraZ(time) + (NoteSpawnDepth - NearDepth) / NoteSpeedMultiplier;
+            return Math.Max(0, VideoSpace.TimeAtCameraZ(targetZ) - time);
+        }
         readonly Vector3[] fixedCameraPositions;
         readonly Quaternion[] fixedCameraRotations;
         public bool UsesFixedCameraKeys => fixedCameraPositions != null;
@@ -37,9 +68,18 @@ namespace GeometryRhythm
                 default: return t * t * (3 - 2 * t);
             }
         }
-        public SpatialDirector(ChartData chart, TempoMap tempo)
+        public SpatialDirector(ChartData chart, TempoMap tempo, float videoNoteSpeed = 1)
         {
             this.chart = chart; this.tempo = tempo; route = new StageSpline(chart.stagePath);
+            // Both chart families share one reading speed. A no-video chart scales its
+            // authored approach window (see ApproachSeconds); a video chart scales the
+            // distance still in flight. At the recommended speed both are unchanged.
+            NoteSpeedMultiplier = NoteScrollSettings.Sanitize(videoNoteSpeed);
+            if (VideoChartSpace.Enabled(chart))
+            {
+                VideoSpace = new VideoChartSpace(chart, tempo);
+                return;
+            }
             // A track authored with world-space keys has fixed endpoints throughout.
             // Resolve legacy/path keys at THEIR own times too; switching interpolation
             // modes per pair would otherwise introduce jumps at mixed-type boundaries.
@@ -71,10 +111,27 @@ namespace GeometryRhythm
         public float UnitsPerSecond => route.UnitsPerSecond;
         public float RouteLength => route.Length;
         public float RouteControlPointDistance(int index) => route.ControlPointDistance(index);
-        public float DistanceAtTime(double time) => (float)time * route.UnitsPerSecond;
-        public Vector3 RouteAt(float distance) => route.Position(distance);
-        public Quaternion RouteRotationAt(float distance) => route.Rotation(distance);
+        public float DistanceAtTime(double time) => VideoSpace != null ? VideoSpace.CameraZ(time) : (float)time * route.UnitsPerSecond;
+        public Vector3 RouteAt(float distance) => VideoSpace != null ? VideoSpace.RailAtDistance(distance) : route.Position(distance);
+        public Quaternion RouteRotationAt(float distance) => VideoSpace != null ? VideoSpace.RailRotationAtDistance(distance) : route.Rotation(distance);
         public Vector3 RoutePoint(float distance, float x, float y) => route.OffsetPoint(distance, x, y);
+        /// <summary>Centre of the judgement plane the player reads at this time. In
+        /// video space that is one NearDepth step along the camera's own forward
+        /// axis, so an offset or turned camera carries the plane with it.</summary>
+        public Vector3 JudgementCenter(double time)
+        {
+            if (VideoSpace != null)
+            {
+                var pose = VideoSpace.Pose(time);
+                return pose.position + pose.rotation * new Vector3(0, 0, NearDepth);
+            }
+            return RouteAt(DistanceAtTime(time) + NearDepth);
+        }
+        /// <summary>Up axis of the screen at this time. Video notes and judgement
+        /// rings roll with the authored camera; legacy charts keep the stage frame.</summary>
+        public Vector3 CameraUp(double time)
+            => VideoSpace != null ? VideoSpace.Pose(time).rotation * Vector3.up
+                : RouteRotationAt(DistanceAtTime(time) + NearDepth) * Vector3.up;
         public int SectionIndex(double time)
         {
             double beat = tempo.BeatAtSeconds(time);
@@ -97,7 +154,8 @@ namespace GeometryRhythm
                 double start = tempo.SecondsAtBeat(chart.sections[i].startBeat);
                 double end = i + 1 < chart.sections.Length ? tempo.SecondsAtBeat(chart.sections[i + 1].startBeat)
                     : tempo.SecondsAtBeat(chart.endBeat);
-                float fadeIn = Mathf.Clamp01((float)(time - start + chart.approachSeconds) / .8f);
+                float fadeIn = VideoSpace == null ? Mathf.Clamp01((float)(time - start + NoteLookaheadSeconds(time)) / .8f)
+                    : Mathf.Clamp01((NoteSpawnDepth - Depth(start, time)) / 4);
                 float fadeOut = Mathf.Clamp01((float)(end + .5 - time) / .7f);
                 value = Mathf.Max(value, fadeIn * fadeOut);
             }
@@ -123,6 +181,7 @@ namespace GeometryRhythm
         {
             float s = DistanceAtTime(time) + depth;
             var path = Array.Find(chart.paths, p => p.id == id);
+            if (VideoSpace != null) return VideoSpace.PathAtDistance(path, s);
             if (path != null && path.offsetKeys != null && path.offsetKeys.Length > 0)
             {
                 Vector2 offset = OffsetAtDistance(id, s);
@@ -158,23 +217,47 @@ namespace GeometryRhythm
             => DistanceAtTime(tempo.SecondsAtBeat(tick / (double)chart.ticksPerBeat)) + NearDepth;
         public float Depth(double hitTime, double time)
         {
-            float q = (float)((hitTime - time) / chart.approachSeconds);
+            // 1x reproduces the original fixed-world note exactly. A personal
+            // read-speed multiplier stretches only the distance BEFORE/AFTER its
+            // hit plane. Hit time, anchor XY/Z, path geometry and camera are unchanged.
+            // Sample the existing path at this depth, so accelerated notes stay on it.
+            if (VideoSpace != null) return NearDepth + (VideoSpace.CameraZ(hitTime) - VideoSpace.CameraZ(time)) * NoteSpeedMultiplier;
+            float q = (float)((hitTime - time) / ApproachSeconds);
             // World-space progress, not accumulating deltaTime. Seek and low FPS stay in sync.
             return NearDepth + q * (FarDepth - NearDepth);
         }
+        public bool NoteInView(double hitTime, double time, double pastWindow = 0)
+        {
+            double delta = hitTime - time;
+            if (delta < -pastWindow - 1e-7) return false;
+            return Depth(hitTime, time) <= NoteSpawnDepth + .0001f;
+        }
         public void NotePose(RuntimeNote note, double time, out Vector3 position, out Quaternion rotation)
         {
-            float depth = Depth(note.HitTime, time);
-            position = Point(note.Data.pathId, depth, time);
-            Vector3 tangent = (Point(note.Data.pathId, depth + .12f, time) - Point(note.Data.pathId, depth - .12f, time)).normalized;
+            PathPose(note.Data.pathId, Depth(note.HitTime,time), time, out position, out rotation);
+        }
+        /// <summary>The touch target stays on the timing markers throughout the judgement
+        /// window, independently of reading speed and the flying note's depth.</summary>
+        public void JudgementPose(string pathId, double time, out Vector3 position, out Quaternion rotation)
+            => PathPose(pathId, NearDepth, time, out position, out rotation);
+
+        void PathPose(string pathId, float depth, double time, out Vector3 position, out Quaternion rotation)
+        {
+            position = Point(pathId, depth, time);
+            Vector3 tangent = (Point(pathId, depth + .12f, time) - Point(pathId, depth - .12f, time)).normalized;
             // A real world-space plane; never billboard to the camera. Gentle tilt exposes the rim.
-            rotation = Quaternion.LookRotation(-tangent, RouteRotationAt(DistanceAtTime(time) + depth) * Vector3.up)
+            // Video space takes its up axis from the authored rig, so a rolled
+            // camera rolls its notes with the screen instead of the world.
+            Quaternion upFrame = VideoSpace != null ? VideoSpace.Pose(time).rotation
+                : RouteRotationAt(DistanceAtTime(time) + depth);
+            rotation = Quaternion.LookRotation(-tangent, upFrame * Vector3.up)
                 * Quaternion.Euler(13, 0, 0);
             foreach (var path in chart.paths)
-                if(path.id==note.Data.pathId) { rotation*=Quaternion.Euler(0,0,path.roll);break; }
+                if(path.id==pathId) { rotation*=Quaternion.Euler(0,0,path.roll);break; }
         }
         public void EvaluateCamera(Camera camera, double time)
         {
+            if (VideoSpace != null) { VideoSpace.ApplyCamera(camera, time); return; }
             float beat = (float)tempo.BeatAtSeconds(time);
             int index = 0;
             while (index + 1 < chart.cameraKeys.Length && chart.cameraKeys[index + 1].beat <= beat) index++;

@@ -15,6 +15,10 @@ namespace GeometryRhythm
         public float endBeat = 128;
         public float approachSeconds = 3.4f;
         public string audioResource = "";
+        public string audioFile = "";
+        // Optional cover art, resolved from a Resources folder like audioResource. Charts
+        // without it keep the procedural menu artwork, so every existing chart is unaffected.
+        public string coverResource = "";
         public float audioOffsetSeconds;
         public StagePathData stagePath;
         public MapData map;
@@ -23,12 +27,53 @@ namespace GeometryRhythm
         public SectionData[] sections;
         public CameraKey[] cameraKeys;
         public NoteData[] notes;
+        // Video contains the authored scenery, effects and camera motion. Gameplay
+        // remains actual 3D geometry; legacy Blender packages remain readable.
+        public VideoBgaData videoBga;
+        public VideoChartSpaceData videoSpace;
+        public BlenderBgaData blenderBga;
         // Authored visuals are optional so every v1 chart remains readable. Instances copy
         // the reusable-library values into the chart; playback never depends on a user's
         // local preset library being present.
         public SceneObjectData[] sceneObjects;
         public EffectClipData[] effectClips;
         public CameraMotionClipData[] cameraMotionClips;
+    }
+    [Serializable] public sealed class VideoBgaData
+    {
+        public string packageManifest;
+        public float timeOffsetSeconds;
+        public bool enabled = true;
+    }
+    [Serializable] public sealed class VideoBgaManifest
+    {
+        public int schemaVersion = 1;
+        public string kind = "video-bga";
+        public string title;
+        public string video = "video.mp4";
+        public string audio = "";
+        public string sourceSha256;
+        public double durationSeconds;
+        public double fps = 30;
+        public int width, height;
+    }
+    [Serializable] public sealed class ChartPackageManifest
+    {
+        public int schemaVersion = 1;
+        public string kind = "geometry-rhythm-chart-package";
+        public string chart = "chart.json";
+        public string title;
+        public string author;
+        public string createdUtc;
+    }
+    [Serializable] public sealed class BlenderBgaData
+    {
+        public string sourceBlend;
+        public string packageManifest;
+        public string sourceSha256;
+        public float timeOffsetSeconds;
+        public bool enabled = true;
+        public bool followCamera = true;
     }
     [Serializable] public sealed class StagePathData
     {
@@ -55,6 +100,7 @@ namespace GeometryRhythm
         // Optional spatial offset track. Tick maps to a cross-section on the stage route.
         // Absent tracks retain the original section/bend/lift behaviour.
         public PathOffsetKey[] offsetKeys;
+        public ScreenAnchorData[] screenAnchors;
     }
     [Serializable] public sealed class PathOffsetKey { public int tick; public float x, y; }
     [Serializable] public sealed class PathPlacement
@@ -221,6 +267,7 @@ namespace GeometryRhythm
             if (c.stagePath != null)
                 Require(Finite(c.stagePath.unitsPerSecond) && c.stagePath.unitsPerSecond > 0 &&
                     c.stagePath.unitsPerSecond <= 100, "invalid stage speed");
+            VideoChartSpace.Validate(c);
             // JsonUtility may instantiate a missing nested object. No points therefore means
             // a legacy chart; a non-empty custom path must still be structurally complete.
             if (c.stagePath != null && c.stagePath.points != null && c.stagePath.points.Length > 0)
@@ -242,7 +289,7 @@ namespace GeometryRhythm
                 var customRoute = new StageSpline(c.stagePath);
                 double duration = new TempoMap(c.tempos, c.ticksPerBeat).SecondsAtBeat(c.endBeat);
                 double requiredLength = duration * c.stagePath.unitsPerSecond + SpatialDirector.FarDepth;
-                Require(customRoute.Length + .01 >= requiredLength,
+                Require(VideoChartSpace.Enabled(c) || customRoute.Length + .01 >= requiredLength,
                     "stage path is too short; extend it to at least " + Math.Ceiling(requiredLength) + " world units");
             }
             var paths = new HashSet<string>();

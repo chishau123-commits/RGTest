@@ -9,3 +9,9 @@
 /.validation/
 /.validation-mobile/
 /Builds/
+# ComfyUI credentials and anything downloaded from a generation run
+/BGA/tools/comfy.env
+/BGA/tools/autodl.env
+# Bootstrap Python packages (numpy) and scratch rebuilt by BGA/tools/*.py
+/BGA/tools/pylibs/
+/.buildtmp/

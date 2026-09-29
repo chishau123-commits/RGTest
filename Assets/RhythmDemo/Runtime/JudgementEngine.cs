@@ -15,8 +15,11 @@ namespace GeometryRhythm
     /// <summary>Logical scoring has no dependency on physics, camera movement or GameObject lifetime.</summary>
     public sealed class JudgementEngine
     {
-        public const double PerfectWindow = .060;
-        public const double GoodWindow = .150;
+        // Judgement windows in seconds, measured on either side of the hit time for taps:
+        // within PerfectWindow is Perfect, within GoodWindow is Good, later than that is a Miss.
+        // A drag only accepts contact from the hit time onward (error >= 0).
+        public const double PerfectWindow = .040;
+        public const double GoodWindow = .120;
         public readonly RuntimeNote[] Notes;
         public int Combo { get; private set; }
         public int MaxCombo { get; private set; }
@@ -108,13 +111,16 @@ namespace GeometryRhythm
     public static class NoteProjection
     {
         public static bool Contains(Camera camera, Transform disc, float radius, Vector2 point, Vector2[] polygon, float padding)
+            => Contains(camera,disc.localToWorldMatrix,radius,point,polygon,padding);
+
+        public static bool Contains(Camera camera, Matrix4x4 disc, float radius, Vector2 point, Vector2[] polygon, float padding)
         {
-            Vector3 centre = camera.WorldToScreenPoint(disc.position);
+            Vector3 centre = camera.WorldToScreenPoint(disc.MultiplyPoint3x4(Vector3.zero));
             if (centre.z <= camera.nearClipPlane) return false;
             for (int i = 0; i < polygon.Length; i++)
             {
                 float angle = i * Mathf.PI * 2 / polygon.Length;
-                Vector3 p = camera.WorldToScreenPoint(disc.TransformPoint(new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0) * radius));
+                Vector3 p = camera.WorldToScreenPoint(disc.MultiplyPoint3x4(new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0) * radius));
                 if (p.z <= camera.nearClipPlane) return false;
                 polygon[i] = p;
             }

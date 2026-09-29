@@ -33,6 +33,28 @@ namespace GeometryRhythm
         public bool HasFinished { get; private set; }
         public bool IsPractice { get; private set; }
         public bool IsPaused => clock == null || clock.Paused;
+        public float NoteSpeed => Spatial == null ? NoteScrollSettings.Load() : Spatial.NoteSpeedMultiplier;
+        public float NoteSpawnPosition => Spatial == null ? NoteSpawnSettings.Load() : Spatial.NoteSpawnPercent;
+        public void SetNoteSpawnPosition(float value)
+        {
+            float sanitized=NoteSpawnSettings.Sanitize(value);
+            NoteSpawnSettings.Save(sanitized);
+            if(Spatial==null) return;
+            Spatial.SetNoteSpawnPosition(sanitized);
+            EvaluateVisuals(clock==null?0:clock.Time);
+        }
+        /// <summary>Personal reading speed. It applies to the running chart immediately and is
+        /// stored for every other chart, the pause sheet and the song list both write it.</summary>
+        public void SetNoteSpeed(float value)
+        {
+            float sanitized=NoteScrollSettings.Sanitize(value);
+            NoteScrollSettings.Save(sanitized);
+            if(Spatial==null) return;
+            Spatial.SetNoteSpeed(sanitized);
+            // Re-seat the visible notes at the new window; ticks, offsets and judgement
+            // times are untouched, and the audio clock is not restarted.
+            EvaluateVisuals(clock==null?0:clock.Time);
+        }
         public Action ReturnToSongs;
         TempoMap tempo;
         SongClock clock;
@@ -51,6 +73,9 @@ namespace GeometryRhythm
         readonly List<Vector2> downs=new List<Vector2>(10);
         readonly List<RaycastResult> uiHits=new List<RaycastResult>();
         readonly List<HitPulse> pulses=new List<HitPulse>();
+        readonly Vector2[] judgementPolygon=new Vector2[24];
+        double visualTime;
+        Coroutine displayFrameRateRoutine;
         MaterialPropertyBlock pulseBlock;
         bool smoke, capture, ownsAudio;
         string fatal;
@@ -76,15 +101,16 @@ namespace GeometryRhythm
             var args=Environment.GetCommandLineArgs();
             smoke=Array.IndexOf(args,"-demoSmoke")>=0;
             string chartPath=Argument(args,"-demoChart");
-            string json=chartPath!=null?File.ReadAllText(chartPath):(chartOverride!=null?chartOverride:Resources.Load<TextAsset>("Charts/geometry-demo")).text;
+            // A session that was handed a chart owns it: the frontend assigns one chart per
+            // song, so the command-line file is only the fallback for the plain demo scene.
+            string json=chartOverride!=null?chartOverride.text
+                :(chartPath!=null?File.ReadAllText(chartPath):Resources.Load<TextAsset>("Charts/geometry-demo").text);
             Chart=ChartLoader.Parse(json);tempo=new TempoMap(Chart.tempos,Chart.ticksPerBeat);
             Duration=tempo.SecondsAtBeat(Chart.endBeat);
             // Desktop: remove the old 120 FPS cap and do not wait for vertical sync.
-            // Mobile: -1 means 30 FPS, so explicitly request the current display refresh rate.
-            // Ceil preserves fractional rates such as 119.88 Hz instead of requesting 119 FPS.
-            double refreshRate=Screen.currentResolution.refreshRateRatio.value;
-            Application.targetFrameRate=Application.isMobilePlatform
-                ? (refreshRate>0 ? (int)Math.Ceiling(refreshRate) : 60) : -1;
+            // Mobile: -1 means 30 FPS, so request the fastest mode the panel advertises.
+            Application.targetFrameRate=Application.isMobilePlatform?MobileRefreshRate():-1;
+            if(Application.isMobilePlatform) RefreshDisplayFrameRate();
             QualitySettings.vSyncCount=0;
             OnDemandRendering.renderFrameInterval=1; // Render every update; no frame skipping.
             QualitySettings.antiAliasing=4; // Keep the thin 3D rings and paths clean.
@@ -105,7 +131,7 @@ namespace GeometryRhythm
             lightObject.transform.rotation=Quaternion.Euler(45,-32,0);
             var light=lightObject.GetComponent<Light>();light.type=LightType.Directional;light.intensity=.72f;
             light.color=new Color(1,.985f,.96f);light.shadows=LightShadows.Soft;light.shadowStrength=.2f;
-            Spatial=new SpatialDirector(Chart,tempo);
+            Spatial=new SpatialDirector(Chart,tempo,NoteScrollSettings.Load());
             var worldRoot=new GameObject("Abstract world / real meshes").transform;worldRoot.SetParent(transform,false);
             stage=new StageVisuals(worldRoot,library,Spatial);
             authoredVisuals=new AuthoredVisualDirector(worldRoot,Chart,tempo,Spatial,demoCamera);
@@ -117,10 +143,16 @@ namespace GeometryRhythm
             int maximum=0,left=0;
             for(int right=0;right<Engine.Notes.Length;right++)
             {
-                while(Engine.Notes[right].HitTime-Engine.Notes[left].HitTime>Chart.approachSeconds+JudgementEngine.GoodWindow) left++;
+                // A distance gate can span different times on eased Z tracks.
+                // Evaluate the actual gate at the last pending instant of the left
+                // note instead of assuming a constant approach duration.
+                while(!Spatial.NoteInView(Engine.Notes[right].HitTime,Engine.Notes[left].HitTime+JudgementEngine.GoodWindow,JudgementEngine.GoodWindow)) left++;
                 maximum=Math.Max(maximum,right-left+1);
             }
             for(int i=0;i<maximum+4;i++) pool.Push(new NoteVisual(notesRoot,library));
+            // Prewarm the full distance first so widening the spawn setting later
+            // does not allocate additional note visuals during play.
+            Spatial.SetNoteSpawnPosition(NoteSpawnSettings.Load());
             for(int i=0;i<12;i++)
             {
                 var r=VisualLibrary.MeshObject("Pooled hit ripple",notesRoot,library.Ring,library.Tap);
@@ -130,8 +162,10 @@ namespace GeometryRhythm
             source.clip=string.IsNullOrEmpty(Chart.audioResource)?null:Resources.Load<AudioClip>(Chart.audioResource);
             if(!string.IsNullOrEmpty(Chart.audioResource) && source.clip==null) throw new FileNotFoundException("Audio resource not found: "+Chart.audioResource);
             if(source.clip==null) { source.clip=DemoSoundtrack.Create((float)Duration);ownsAudio=true; }
-            clock=new SongClock(source,Duration,Chart.audioOffsetSeconds);
-            hud=new DemoHud(transform,TogglePause,Restart,ToggleAuto,ToggleMute,()=>ReturnToSongs?.Invoke());
+            clock=new SongClock(source,Duration,Chart.audioOffsetSeconds,AudioSyncSettings.Load()/1000.0);
+            hud=new DemoHud(transform,TogglePause,Restart,ToggleAuto,ToggleMute,()=>ReturnToSongs?.Invoke(),
+                ()=>NoteSpeed,SetNoteSpeed,()=>NoteSpawnPosition,SetNoteSpawnPosition,
+                AudioSyncSettings.Load,value=>{AudioSyncSettings.Save(value);clock.SetOutputDelay(value/1000.0);});
             Engine.OnJudged=OnJudged;
             clock.Seek(0,startInMenu);Ready=true;
             if(startInMenu) SetMenuMode(true);
@@ -145,7 +179,10 @@ namespace GeometryRhythm
                 // Menus reuse the actual 3D environment, without advancing a chart or audio.
                 double preview=Math.Min(Duration*.4,8)+Math.Sin(Time.unscaledTimeAsDouble*.08)*1.2;
                 Spatial.EvaluateCamera(demoCamera,preview);stage.Evaluate(preview,tempo.BeatAtSeconds(preview));
+                // The menu shows the world without advancing the chart: keep the authored
+                // backdrops in sync with the preview time, and keep the 16:9 playfield lock.
                 authoredVisuals?.EvaluateBackdrops(preview);
+                ApplyPlayfieldViewport();
                 return;
             }
             if(!smoke) ReadShortcuts();
@@ -160,13 +197,7 @@ namespace GeometryRhythm
                     if(Input.touchCount==0 && !Input.GetMouseButton(0)) waitForPointerRelease=false;
                 }
                 else CollectPointers();
-                if(!autoPlay)
-                {
-                    double inputTime=time+inputOffsetMilliseconds/1000.0;
-                    foreach(var point in downs) Engine.Tap(inputTime,n=>Inside(n,point));
-                    Engine.Drag(inputTime,n=>InsideAny(n),contacts.Count>0);
-                }
-                Engine.Advance(time,autoPlay);
+                JudgePointers(time);
                 if(time>=Duration)
                 {
                     // Final notes also get resolved when the DSP clock is clamped at song end.
@@ -175,6 +206,17 @@ namespace GeometryRhythm
                 }
             }
             hud.Update(Engine,time,Duration,Spatial.Section(time),clock.Paused,autoPlay,source.mute,capture);
+        }
+        void JudgePointers(double time)
+        {
+            double inputTime=autoPlay?time:time+inputOffsetMilliseconds/1000.0;
+            if(!autoPlay)
+            {
+                foreach(var point in downs) Engine.Tap(inputTime,n=>Inside(n,point));
+                Engine.Drag(inputTime,n=>InsideAny(n),contacts.Count>0);
+            }
+            // Expiry and input share the calibrated clock, including on frames without input.
+            Engine.Advance(inputTime,autoPlay);
         }
         void ReadShortcuts()
         {
@@ -215,21 +257,65 @@ namespace GeometryRhythm
         }
         bool Inside(RuntimeNote note,Vector2 point)
         {
-            if(note.View==null) return false;
-            return NoteProjection.Contains(demoCamera,note.View.Transform,1,point,note.View.HitPolygon,
-                Mathf.Clamp(Mathf.Min(Screen.width,Screen.height)*.013f,8,20));
+            // A finger does not aim like a mouse. Keep the margin proportional to
+            // the actual camera viewport; the former 20 px cap shrank it on tablets.
+            float shortSide=Mathf.Min(demoCamera.pixelWidth,demoCamera.pixelHeight);
+            float padding=Mathf.Max(8,shortSide*.03f);
+            // Preserve direct touches on the visible ring, including its hollow centre.
+            if(note.View!=null && NoteProjection.Contains(demoCamera,note.View.Transform,1,point,note.View.HitPolygon,padding)) return true;
+            // High reading speeds can move a ring past the camera while it is still
+            // inside the Good window. The timing-marker target must remain hittable.
+            Spatial.JudgementPose(note.Data.pathId,visualTime,out var position,out var rotation);
+            var target=Matrix4x4.TRS(position,rotation,Vector3.one);
+            if(NoteProjection.Contains(demoCamera,target,NoteVisual.Radius,point,judgementPolygon,padding)) return true;
+            // Finger placement is not a projected tilted disc: real tablet presses
+            // also land above/right of it. Give the target a bounded screen-space
+            // contact area, partitioned by the closest visible judgement centre.
+            // This cannot move the note's timing window or consume a second Tap.
+            Vector3 centre=demoCamera.WorldToScreenPoint(position);
+            Vector2 delta=point-(Vector2)centre;
+            if(centre.z<=demoCamera.nearClipPlane || Mathf.Abs(delta.x)>shortSide*.20f ||
+                delta.y>shortSide*.10f || delta.y<-shortSide*.20f) return false;
+            float distanceSq=delta.sqrMagnitude;
+            bool earlierPath=true;
+            foreach(var path in Chart.paths)
+            {
+                if(path.id==note.Data.pathId) { earlierPath=false;continue; }
+                if(Spatial.Visibility(path.id,visualTime)<=.01f) continue;
+                Vector3 other=demoCamera.WorldToScreenPoint(Spatial.Point(path.id,SpatialDirector.NearDepth,visualTime));
+                if(other.z<=demoCamera.nearClipPlane) continue;
+                float otherDistanceSq=(point-(Vector2)other).sqrMagnitude;
+                // Chart order owns an exact midpoint, including local Drag contacts.
+                if(otherDistanceSq<distanceSq-.01f || (earlierPath&&Mathf.Abs(otherDistanceSq-distanceSq)<=.01f)) return false;
+            }
+            return true;
         }
         bool InsideAny(RuntimeNote note)
         { foreach(var contact in contacts) if(Inside(note,contact)) return true;return false; }
+        /// <summary>Lock the rendered playfield to 16:9 so a chart keeps its shape on every
+        /// display. A chart without a video space owns no projection of its own, so any
+        /// aspect/matrix left behind by a previous video chart is cleared first; a video
+        /// chart keeps the projection its rig authored.</summary>
+        public void ApplyPlayfieldViewport()
+        {
+            if(!VideoChartSpace.Enabled(Chart))
+            {
+                demoCamera.ResetAspect();
+                demoCamera.ResetProjectionMatrix();
+            }
+            GameViewport.Apply(demoCamera);
+        }
         public void EvaluateVisuals(double time)
         {
-            Spatial.EvaluateCamera(demoCamera,time);CameraMotionEvaluator.Apply(Chart,tempo,demoCamera,time);
+            visualTime=time;
+            Spatial.EvaluateCamera(demoCamera,time);
+            if (!VideoChartSpace.Enabled(Chart)) CameraMotionEvaluator.Apply(Chart,tempo,demoCamera,time);
+            ApplyPlayfieldViewport();
             stage.Evaluate(time,tempo.BeatAtSeconds(time));authoredVisuals?.Evaluate(time);
             foreach(var path in paths.Values) path.Evaluate(Spatial,time);
             foreach(var n in Engine.Notes)
             {
-                double delta=n.HitTime-time;
-                bool visible=n.Result==NoteResult.Pending && delta<=Chart.approachSeconds && delta>=-JudgementEngine.GoodWindow;
+                bool visible=n.Result==NoteResult.Pending && Spatial.NoteInView(n.HitTime,time,JudgementEngine.GoodWindow);
                 if(visible)
                 {
                     if(n.View==null) { n.View=pool.Count>0?pool.Pop():new NoteVisual(notesRoot,library);n.View.Bind(n.Data); }
@@ -253,7 +339,9 @@ namespace GeometryRhythm
             foreach(var pulse in pulses)
             {
                 if(clock.Time-pulse.Start<.35) continue;
-                Spatial.NotePose(note,clock.Time,out var p,out var r);pulse.Transform.SetPositionAndRotation(p,r);
+                // Feedback belongs to the place the player pressed. At high speed a
+                // late-but-valid note may already be behind the camera.
+                Spatial.JudgementPose(note.Data.pathId,clock.Time,out var p,out var r);pulse.Transform.SetPositionAndRotation(p,r);
                 pulse.Start=clock.Time;pulse.Color=note.Data.action=="tap"?new Color(.25f,.64f,1):Color.white;break;
             }
         }
@@ -284,6 +372,9 @@ namespace GeometryRhythm
         public void ToggleMute() { if(source!=null) source.mute=!source.mute; }
         void OnApplicationFocus(bool focused)
         {
+            // Surface hints may be lost in the background. Recheck the maximum permitted
+            // mode on return, including after the user changes system/game settings.
+            if(focused && Application.isMobilePlatform && Ready) RefreshDisplayFrameRate();
             if(!Ready || smoke) return;
             if(!focused) { clock.SetPaused(true);uiPointers.Clear(); }
             // Keep paused on return, preventing surprise misses while the player refocuses.
@@ -300,6 +391,157 @@ namespace GeometryRhythm
         }
         static string Argument(string[] args,string key)
         { int index=Array.IndexOf(args,key);return index>=0 && index+1<args.Length?args[index+1]:null; }
+
+        /// <summary>Frame rate to ask the display for on mobile. <c>Screen.currentResolution</c>
+        /// only reports the mode the system already picked, so requesting it pins a 120/144 Hz
+        /// panel at whatever it booted at: the app asks the display for 60 Hz in turn and the
+        /// panel never switches up, which also quantises touch to 16.7 ms frames. The fastest
+        /// advertised mode is requested instead; devices that refuse simply keep their mode.</summary>
+        static int MobileRefreshRate()
+        {
+            double fastest=FastestAndroidRefreshRate();
+            if(fastest<=0) fastest=Screen.currentResolution.refreshRateRatio.value;
+            // Round to the nearest whole rate: panels report 119.88 Hz and 144.00002 Hz, and only
+            // the real mode is accepted. Rounding up asked for 145 Hz, which no display offers.
+            return fastest>0?(int)Math.Round(fastest):60;
+        }
+        static double FastestAndroidRefreshRate()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                using(var player=new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                using(var activity=player.GetStatic<AndroidJavaObject>("currentActivity"))
+                using(var manager=activity.Call<AndroidJavaObject>("getWindowManager"))
+                using(var display=manager.Call<AndroidJavaObject>("getDefaultDisplay"))
+                {
+                    double fastest=0;
+                    foreach(var mode in display.Call<AndroidJavaObject[]>("getSupportedModes"))
+                    {
+                        if(mode==null) continue;
+                        fastest=Math.Max(fastest,mode.Call<float>("getRefreshRate"));
+                        mode.Dispose();
+                    }
+                    return fastest;
+                }
+            }
+            catch(Exception exception) { Debug.LogWarning("Display modes unavailable: "+exception.Message); }
+#endif
+            return 0;
+        }
+        void RefreshDisplayFrameRate()
+        {
+            if(displayFrameRateRoutine!=null) StopCoroutine(displayFrameRateRoutine);
+            displayFrameRateRoutine=StartCoroutine(ApplyDisplayFrameRate());
+        }
+        /// <summary>Keep the fastest supported target even while system policy temporarily
+        /// limits the display. Lowering the target to the current mode makes that limit
+        /// self-sustaining, and a 60 FPS target on a restored 144 Hz panel can pace at 48 FPS.</summary>
+        System.Collections.IEnumerator ApplyDisplayFrameRate()
+        {
+            int target=MobileRefreshRate();
+            Application.targetFrameRate=target;
+            RequestDisplayFrameRate(target);
+            // Unity may recreate its rendering Surface during launch or resume. Reapply
+            // after setup without treating a delayed/system-limited switch as rejection.
+            yield return new WaitForSecondsRealtime(1f);
+            // Re-arm Unity's native frame pacer after the asynchronous mode switch.
+            // Reassigning an unchanged target can retain the resume-time half-rate interval.
+            Application.targetFrameRate=-1;
+            yield return null;
+            Application.targetFrameRate=target;
+            RequestDisplayFrameRate(target);
+            displayFrameRateRoutine=null;
+        }
+        /// <summary>Request the matching physical display mode on the Android UI thread.
+        /// A window-level preference survives Unity recreating or updating its SurfaceView.</summary>
+        static void RequestDisplayFrameRate(int targetFrameRate)
+        {
+            if(targetFrameRate<=0) return;
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                using(var player=new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                using(var activity=player.GetStatic<AndroidJavaObject>("currentActivity"))
+                {
+                    activity.Call("runOnUiThread",new AndroidJavaRunnable(()=>
+                    {
+                        try
+                        {
+                            using(var unity=new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+                            using(var current=unity.GetStatic<AndroidJavaObject>("currentActivity"))
+                            using(var manager=current.Call<AndroidJavaObject>("getWindowManager"))
+                            using(var display=manager.Call<AndroidJavaObject>("getDefaultDisplay"))
+                            using(var active=display.Call<AndroidJavaObject>("getMode"))
+                            using(var window=current.Call<AndroidJavaObject>("getWindow"))
+                            using(var attributes=window.Call<AndroidJavaObject>("getAttributes"))
+                            {
+                                int width=active.Call<int>("getPhysicalWidth"),height=active.Call<int>("getPhysicalHeight");
+                                int modeId=0;float requested=targetFrameRate;
+                                foreach(var mode in display.Call<AndroidJavaObject[]>("getSupportedModes"))
+                                {
+                                    if(mode==null) continue;
+                                    using(mode)
+                                    {
+                                        float rate=mode.Call<float>("getRefreshRate");
+                                        if(Math.Abs(rate-targetFrameRate)<.5f && mode.Call<int>("getPhysicalWidth")==width && mode.Call<int>("getPhysicalHeight")==height)
+                                        {modeId=mode.Call<int>("getModeId");requested=rate;}
+                                    }
+                                }
+                                if(modeId==0) return;
+                                attributes.Set("preferredDisplayModeId",modeId);
+                                attributes.Set("preferredRefreshRate",requested);
+                                window.Call("setAttributes",attributes);
+                                RequestXiaomiGameFrameRate(current,targetFrameRate);
+                                // Android 11+ games also declare their frame rate directly
+                                // on the rendering surface, after Unity's initial setup.
+                                using(var version=new AndroidJavaClass("android.os.Build$VERSION"))
+                                if(version.GetStatic<int>("SDK_INT")>=30)
+                                using(var resources=current.Call<AndroidJavaObject>("getResources"))
+                                {
+                                    int id=resources.Call<int>("getIdentifier","unitySurfaceView","id",current.Call<string>("getPackageName"));
+                                    if(id==0) return;
+                                    using(var view=current.Call<AndroidJavaObject>("findViewById",id))
+                                    using(var holder=view.Call<AndroidJavaObject>("getHolder"))
+                                    using(var surface=holder.Call<AndroidJavaObject>("getSurface"))
+                                        surface.Call("setFrameRate",requested,0); // FRAME_RATE_COMPATIBILITY_DEFAULT (games)
+                                }
+                            }
+                        }
+                        catch(Exception exception) { Debug.LogWarning("Display mode request failed: "+exception.Message); }
+                    }));
+                }
+            }
+            catch(Exception exception) { Debug.LogWarning("Display frame rate request failed: "+exception.Message); }
+#endif
+        }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+        /// <summary>HyperOS can cap an unrecognised game at 60 Hz despite a 144 Hz Surface
+        /// vote. Its exported PowerKeeper receiver accepts a per-game FPS request. This
+        /// optional vendor interface may be absent; standard Android hints still apply.</summary>
+        static void RequestXiaomiGameFrameRate(AndroidJavaObject activity,int targetFrameRate)
+        {
+            try
+            {
+                using(var build=new AndroidJavaClass("android.os.Build"))
+                {
+                    if(!string.Equals(build.GetStatic<string>("MANUFACTURER"),"Xiaomi",StringComparison.OrdinalIgnoreCase)) return;
+                }
+                // Scope both the receiver and the affected package. No global settings,
+                // privileged permissions, or changes to thermal/power services are needed.
+                using(var intent=new AndroidJavaObject("android.content.Intent","com.xiaomi.joyose.OVERRIDE_GAME_FRESHRATE"))
+                using(var receiver=intent.Call<AndroidJavaObject>("setPackage","com.miui.powerkeeper"))
+                using(var package=intent.Call<AndroidJavaObject>("putExtra","override_pkg_name",activity.Call<string>("getPackageName")))
+                using(var rate=intent.Call<AndroidJavaObject>("putExtra","override_freshrate",targetFrameRate))
+                    activity.Call("sendBroadcast",intent);
+            }
+            catch(AndroidJavaException)
+            {
+                // This is a best-effort OEM extension, not a required Android API.
+            }
+        }
+#endif
 
         // Automated standalone smoke mode exercises the actual built player and captures real
         // render frames. It is opt-in via command line and has no effect on ordinary play.
@@ -324,19 +566,28 @@ namespace GeometryRhythm
                 Canvas.ForceUpdateCanvases();
                 var target=RenderTexture.GetTemporary(1600,900,24,RenderTextureFormat.ARGB32);
                 var previous=RenderTexture.active;
-                demoCamera.targetTexture=target;demoCamera.Render();RenderTexture.active=target;
+                demoCamera.targetTexture=target;
+                // The capture target owns the whole frame; the HUD is rendered through this
+                // camera in screen space, so the playfield letterbox must step aside here.
+                GameViewport.Apply(demoCamera);
+                demoCamera.Render();RenderTexture.active=target;
                 var screenshot=new Texture2D(1600,900,TextureFormat.RGB24,false);
                 screenshot.ReadPixels(new Rect(0,0,1600,900),0,0);screenshot.Apply();
                 imagesValid &= screenshot.GetPixel(800,450).grayscale>.05f;
                 File.WriteAllBytes(Path.Combine(directory,"demo-"+time.ToString("00")+"s.png"),screenshot.EncodeToPNG());
                 demoCamera.targetTexture=null;RenderTexture.active=previous;
+                ApplyPlayfieldViewport();
                 RenderTexture.ReleaseTemporary(target);Destroy(screenshot);
             }
-            bool inputPassed=true;
+            // A converted chart can ship only plain taps and drags: verify the kinds this
+            // chart actually contains instead of dereferencing a sleeve note that is absent.
+            bool inputPassed=true;int kindsVerified=0;
             foreach(string action in new[]{"tap","drag"})
             foreach(bool sleeve in new[]{false,true})
             {
                 var targetNote=Array.Find(Engine.Notes,n=>n.Data.action==action&&n.Data.protectedNote==sleeve);
+                if(targetNote==null) continue;
+                kindsVerified++;
                 Seek(targetNote.HitTime,true);
                 Vector2 centre=demoCamera.WorldToScreenPoint(targetNote.View.Transform.position);
                 Vector2 testPoint=sleeve?new Vector2(10,Screen.height*.5f):centre;
@@ -344,6 +595,7 @@ namespace GeometryRhythm
                 else Engine.Drag(targetNote.HitTime,n=>Inside(n,testPoint),true);
                 inputPassed &= targetNote.Result==NoteResult.Perfect;
             }
+            inputPassed &= kindsVerified>0;
             // Check real DSP advance and a pause, not only arithmetic in the score engine.
             Seek(4,false);yield return new WaitForSecondsRealtime(.35f);
             bool clockPassed=clock.Time>4.1;
@@ -355,7 +607,7 @@ namespace GeometryRhythm
                 && QualitySettings.antiAliasing==4 && demoCamera.allowMSAA && !demoCamera.allowDynamicResolution
                 && (Application.isMobilePlatform ? Application.targetFrameRate>0 : Application.targetFrameRate==-1);
             bool passed=imagesValid && inputPassed && clockPassed && renderingPassed && Engine.Misses==0 && Engine.Judged==Chart.notes.Length && Engine.Score==1000000;
-            File.WriteAllText(Path.Combine(directory,"player-smoke.txt"),"PASS="+passed+"\nImages="+imagesValid+"\nFourRules="+inputPassed+"\nDspClock="+clockPassed+"\nRenderSettings="+renderingPassed+"\nTargetFrameRate="+Application.targetFrameRate+"\nVSync="+QualitySettings.vSyncCount+"\nNotes="+Engine.Judged+"\nScore="+Engine.Score+"\nMisses="+Engine.Misses+"\n");
+            File.WriteAllText(Path.Combine(directory,"player-smoke.txt"),"PASS="+passed+"\nImages="+imagesValid+"\nFourRules="+inputPassed+"\nNoteKinds="+kindsVerified+"\nDspClock="+clockPassed+"\nRenderSettings="+renderingPassed+"\nTargetFrameRate="+Application.targetFrameRate+"\nVSync="+QualitySettings.vSyncCount+"\nNotes="+Engine.Judged+"\nScore="+Engine.Score+"\nMisses="+Engine.Misses+"\n");
             Debug.Log("GEOMETRY_DEMO_SMOKE "+(passed?"PASS":"FAIL"));
             Application.Quit(passed?0:1);
         }

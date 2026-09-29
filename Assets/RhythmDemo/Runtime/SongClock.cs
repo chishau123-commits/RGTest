@@ -9,11 +9,25 @@ namespace GeometryRhythm
         readonly AudioSource source;
         readonly double duration;
         readonly double audioOffset;
+        readonly Func<double> readDsp=()=>AudioSettings.dspTime;
+        readonly Action<double> playScheduled;
+        double outputDelay;
         double anchorDsp, anchorSong;
         public bool Paused { get; private set; }
-        public double Time => Paused ? anchorSong : Math.Min(duration, anchorSong + Math.Max(0, AudioSettings.dspTime - anchorDsp));
-        public SongClock(AudioSource source, double duration, double audioOffset)
-        { this.source = source; this.duration = duration; this.audioOffset = audioOffset; }
+        public double Time => Paused ? anchorSong : Math.Min(duration, anchorSong + Math.Max(0, readDsp() - anchorDsp));
+        public SongClock(AudioSource source, double duration, double audioOffset, double outputDelaySeconds=0)
+        {
+            this.source = source; this.duration = duration; this.audioOffset = audioOffset;
+            playScheduled=source.PlayScheduled;
+            outputDelay=AudioSyncSettings.Sanitize((float)(outputDelaySeconds*1000))/1000.0;
+        }
+        public void SetOutputDelay(double seconds)
+        {
+            double value=AudioSyncSettings.Sanitize((float)(seconds*1000))/1000.0;
+            if(Math.Abs(value-outputDelay)<.000001)return;
+            double time=Time;outputDelay=value;
+            Seek(time,Paused);
+        }
         public void Seek(double seconds, bool paused)
         {
             anchorSong = Math.Max(0, Math.Min(duration, seconds));
@@ -22,14 +36,16 @@ namespace GeometryRhythm
         }
         void Schedule()
         {
-            anchorDsp = AudioSettings.dspTime + .12;
+            // Keep scheduling lead time even for negative calibration. Audio and
+            // gameplay have separate start anchors, but then run at the same rate.
+            anchorDsp = readDsp() + .12 + Math.Max(0,outputDelay);
             if (source.clip == null) return;
             // audioOffset is the position in the audio clip corresponding to chart time zero.
             double audioTime = anchorSong + audioOffset;
             if (audioTime >= source.clip.length) return;
             source.timeSamples = Math.Min(source.clip.samples - 1,
                 Math.Max(0, (int)(Math.Max(0, audioTime) * source.clip.frequency)));
-            source.PlayScheduled(anchorDsp + Math.Max(0, -audioTime));
+            playScheduled(anchorDsp-outputDelay + Math.Max(0, -audioTime));
         }
         public void SetPaused(bool pause)
         {

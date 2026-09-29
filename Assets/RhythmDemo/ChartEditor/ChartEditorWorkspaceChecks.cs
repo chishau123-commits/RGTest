@@ -81,14 +81,18 @@ namespace GeometryRhythm.ChartEditor
                 float fov = sceneCamera.fieldOfView; string previewSnapshot = JsonUtility.ToJson(chart); int undoCount = undo.Count;
                 SetPreviewMode(true);
                 check(chartCameraPreview && playing && Math.Abs(songTime - 1) < .001, "Preview auto-plays from current playhead");
-                check(sceneCamera.pixelRect.x == 0 && sceneCamera.pixelRect.width == Screen.width, "Preview expands over inspector without fullscreen");
+                check(VideoCameraLocked ? Mathf.Abs(sceneCamera.aspect - VideoFrameAspect) < .0001f :
+                    sceneCamera.pixelRect.x == 0 && sceneCamera.pixelRect.width == Screen.width,
+                    "Preview uses the available viewport while preserving video aspect");
                 check(visualRoot.GetComponentsInChildren<ChartEditorHandle>().Length == 0 && cameraTargetMarker == null && visualRoot.Find("Stage master spline") == null,
                     "Preview hides editing handles, stage guide and yellow marker");
                 spatial.EvaluateCamera(evaluatorCamera, songTime);
-                check(Vector3.Distance(sceneCamera.transform.position, evaluatorCamera.transform.position) < .001f &&
-                    Quaternion.Angle(sceneCamera.transform.rotation, evaluatorCamera.transform.rotation) < .001f, "Preview uses shared gameplay camera evaluation");
-                Transform mapChunk = visualRoot.Find("Generated map chunk 0"); RefreshPreviewVisuals();
-                check(mapChunk != null && visualRoot.Find("Generated map chunk 0") == mapChunk, "Preview playback retains static map geometry");
+                check(Vector3.Distance(sceneCamera.transform.position, VideoCameraLocked ? position : evaluatorCamera.transform.position) < .001f &&
+                    Quaternion.Angle(sceneCamera.transform.rotation, VideoCameraLocked ? rotation : evaluatorCamera.transform.rotation) < .001f,
+                    "Preview respects the video lock or the legacy gameplay camera");
+                RefreshPreviewVisuals();
+                check(previewMotionRoot != null && previewMotionRoot.parent == visualRoot,
+                    "Preview refresh rebuilds only the live 3D paths and notes");
                 ReadWorkspaceKeys(new Event { type = EventType.KeyDown, keyCode = KeyCode.Space });
                 check(!playing, "Space pauses preview");
                 var canvas = TimelineCanvas;
