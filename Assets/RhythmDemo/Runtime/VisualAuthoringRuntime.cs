@@ -147,9 +147,8 @@ namespace GeometryRhythm
             effectLight.transform.rotation = Quaternion.Euler(30, -45, 0); effectLight.enabled = false;
             overlayMaterial = Own(new Material(Shader.Find("Sprites/Default"))) as Material;
             overlayMaterial.renderQueue = 5000;
-            var overlayObject = new GameObject("Screen effect overlay",typeof(MeshFilter),typeof(MeshRenderer));
-            overlayObject.GetComponent<MeshFilter>().sharedMesh=MeshFactory.Quad();
-            overlay = overlayObject.transform; overlay.SetParent(camera.transform, false);
+            var overlayObject = GameObject.CreatePrimitive(PrimitiveType.Quad); overlayObject.name = "Screen effect overlay";
+            UnityEngine.Object.Destroy(overlayObject.GetComponent<Collider>()); overlay = overlayObject.transform; overlay.SetParent(camera.transform, false);
             overlay.GetComponent<Renderer>().sharedMaterial = overlayMaterial; overlay.gameObject.SetActive(false);
             BuildScene(); BuildEffects();
             // Place them once up front rather than waiting for the first Evaluate: the demo shows
@@ -215,15 +214,8 @@ namespace GeometryRhythm
                 var go = new GameObject("Imported OBJ", typeof(MeshFilter), typeof(MeshRenderer));
                 go.GetComponent<MeshFilter>().sharedMesh = mesh; return go;
             }
-            // Planes, images and videos are quads without the collider CreatePrimitive would add:
-            // the IL2CPP Android player strips MeshCollider and logs an error for each one.
-            if (data.kind == "plane" || data.kind == "image" || data.kind == "video")
-            {
-                var quad = new GameObject("Runtime quad", typeof(MeshFilter), typeof(MeshRenderer));
-                quad.GetComponent<MeshFilter>().sharedMesh = MeshFactory.Quad();
-                return quad;
-            }
-            PrimitiveType type = data.kind == "sphere" ? PrimitiveType.Sphere : data.kind == "cylinder" ? PrimitiveType.Cylinder : PrimitiveType.Cube;
+            PrimitiveType type = data.kind == "sphere" ? PrimitiveType.Sphere : data.kind == "cylinder" ? PrimitiveType.Cylinder :
+                data.kind == "plane" || data.kind == "image" || data.kind == "video" ? PrimitiveType.Quad : PrimitiveType.Cube;
             var primitive = GameObject.CreatePrimitive(type); UnityEngine.Object.Destroy(primitive.GetComponent<Collider>()); return primitive;
         }
 

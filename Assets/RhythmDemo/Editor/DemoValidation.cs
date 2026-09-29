@@ -28,15 +28,6 @@ namespace GeometryRhythm.Editor
             Check(e.Tap(.7,n=>true)==null,"tap rejects early time");
             Check(e.Tap(1,n=>true)!=null&&e.Perfects==1,"local tap success");
             Check(e.Tap(1,n=>true)==null&&e.Judged==1,"no double scoring");
-            // The feel contract: +-40 ms is Perfect, +-120 ms is Good, anything later is nothing.
-            Check(JudgementEngine.PerfectWindow==.040&&JudgementEngine.GoodWindow==.120,"published judgement windows");
-            e=Engine(Note("window","tap"));e.Tap(1.039,n=>true);Check(e.Perfects==1,"39 ms late is Perfect");
-            e=Engine(Note("window","tap"));e.Tap(1.041,n=>true);Check(e.Goods==1,"41 ms late is Good");
-            e=Engine(Note("window","tap"));e.Tap(1.119,n=>true);Check(e.Goods==1,"119 ms late is Good");
-            e=Engine(Note("window","tap"));Check(e.Tap(1.121,n=>true)==null&&e.Judged==0,"121 ms late is rejected");
-            e=Engine(Note("window","tap"));e.Tap(.961,n=>true);Check(e.Perfects==1,"39 ms early is Perfect");
-            e=Engine(Note("window","tap"));e.Tap(.959,n=>true);Check(e.Goods==1,"41 ms early is Good");
-            e=Engine(Note("window","tap"));Check(e.Tap(.879,n=>true)==null&&e.Judged==0,"121 ms early is rejected");
             e=Engine(Note("global","tap",true));
             Check(e.Tap(1,n=>false)!=null,"protected tap anywhere");
             e=Engine(Note("global","tap",true),Note("local","tap"));

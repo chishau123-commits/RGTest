@@ -37,35 +37,25 @@ namespace GeometryRhythm
             m.triangles = new[] {0,1,2,3,4,5,6,7,8,9,10,11};
             m.RecalculateNormals(); m.RecalculateBounds(); return m;
         }
-        /// <summary>The built-in quad mesh, taken straight from the engine resources.
-        /// <c>GameObject.CreatePrimitive(PrimitiveType.Quad)</c> would also attach a MeshCollider that
-        /// this project destroys immediately; the IL2CPP Android player strips that class and then logs
-        /// "class 'MeshCollider' doesn't exist" for every runtime quad. Same geometry and UVs, no
-        /// collider, and no engine-code-stripping setting has to be weakened for the whole player.</summary>
-        public static Mesh Quad() => Resources.GetBuiltinResource<Mesh>("Quad.fbx");
     }
 
     /// <summary>Owns generated meshes/materials so domain reloads and scene restarts do not leak them.</summary>
     public sealed class VisualLibrary : IDisposable
     {
-        public readonly Mesh Ring, NoteOutline, TargetRing, ShellRing, Disc, Shard;
+        public readonly Mesh Ring, ShellRing, Disc, Shard;
         public readonly Material Tap, Drag, TapShell, DragShell, Border, Line, Marker, Pearl, Sand, Stone, Sky, Spark;
         readonly List<UnityEngine.Object> owned = new List<UnityEngine.Object>();
         public VisualLibrary()
         {
-            Ring = Own(MeshFactory.Ring(.62f, 1, .095f));
-            NoteOutline = Own(MeshFactory.Ring(.53f, 1.08f, .08f));
-            TargetRing = Own(MeshFactory.Ring(1.34f, 1.43f, .04f));
+            Ring = Own(MeshFactory.Ring(.76f, 1, .095f));
             ShellRing = Own(MeshFactory.Ring(1.20f, 1.25f, .055f));
             Disc = Own(MeshFactory.Ring(0, 1.23f, .012f));
             Shard = Own(MeshFactory.Shard());
-            // Gameplay shapes retain their contrast at the far end of the track.
-            // World geometry keeps its atmospheric fog in the separate Flat shader.
-            Tap = Note(new Color(.025f,.36f,1));
-            Drag = Note(new Color(.985f,.991f,1));
-            Border = Note(new Color(.035f,.065f,.13f));
+            Tap = Flat(new Color(.13f,.48f,.96f));
+            Drag = Flat(new Color(.985f,.991f,1));
+            Border = Flat(new Color(.62f,.70f,.77f));
             Line = Flat(new Color(.62f,.73f,.79f));
-            Marker = Note(new Color(.10f,.16f,.24f));
+            Marker = Flat(new Color(.55f,.61f,.65f));
             Spark = Flat(new Color(1,.91f,.70f));
             TapShell = Transparent(new Color(.35f,.68f,1,.13f));
             DragShell = Transparent(new Color(1,1,1,.28f));
@@ -76,7 +66,6 @@ namespace GeometryRhythm
         }
         T Own<T>(T value) where T : UnityEngine.Object { owned.Add(value); return value; }
         Material Flat(Color color) { var m = Own(new Material(Shader.Find("GeometryRhythm/Flat"))); m.color = color; return m; }
-        Material Note(Color color) { var m = Own(new Material(Shader.Find("GeometryRhythm/Note"))); m.color = color; return m; }
         Material Transparent(Color color) { var m = Own(new Material(Shader.Find("GeometryRhythm/Sleeve"))); m.color = color; return m; }
         Material Lit(Color color)
         {
@@ -95,8 +84,6 @@ namespace GeometryRhythm
 
     public sealed class NoteVisual
     {
-        // Shared by the visible note and the persistent judgement-plane hit region.
-        public const float Radius = 1.25f;
         public readonly Transform Transform;
         public readonly Vector2[] HitPolygon = new Vector2[24];
         readonly MeshRenderer face, shell, rim;
@@ -106,8 +93,9 @@ namespace GeometryRhythm
         {
             this.library = library;
             Transform = new GameObject("Pooled Note").transform; Transform.SetParent(parent, false);
-            var outline = VisualLibrary.MeshObject("Contrast edge", Transform, library.NoteOutline, library.Border);
-            outline.transform.localPosition = new Vector3(0,0,-.035f);
+            var outline = VisualLibrary.MeshObject("Fine edge", Transform, library.Ring, library.Border);
+            outline.transform.localScale = Vector3.one * 1.035f;
+            outline.transform.localPosition = new Vector3(0,0,-.015f);
             backing = outline.gameObject;
             face = VisualLibrary.MeshObject("Ring", Transform, library.Ring, library.Tap);
             shell = VisualLibrary.MeshObject("Protection sleeve", Transform, library.Disc, library.TapShell);
@@ -122,9 +110,9 @@ namespace GeometryRhythm
             rim.sharedMaterial = tap ? library.Tap : library.Border;
             shell.sharedMaterial = tap ? library.TapShell : library.DragShell;
             rim.gameObject.SetActive(note.protectedNote); shell.gameObject.SetActive(note.protectedNote);
-            backing.SetActive(true);
+            backing.SetActive(!tap);
             Transform.name = note.id + " / " + note.action + (note.protectedNote ? " / protected" : " / local");
-            Transform.localScale = Vector3.one * Radius;
+            Transform.localScale = Vector3.one * 1.0f;
             Transform.gameObject.SetActive(true);
         }
         public void Release() => Transform.gameObject.SetActive(false);
@@ -145,21 +133,15 @@ namespace GeometryRhythm
             line.positionCount = vertices.Length; line.useWorldSpace = true; line.widthMultiplier = .042f;
             line.numCornerVertices = 3; line.numCapVertices = 4;
             line.shadowCastingMode = ShadowCastingMode.Off; line.receiveShadows = false;
-            // Thin dark target + four ticks distinguish the fixed hit position from
-            // thick moving notes. It shares the exact judgement pose, including roll.
-            marker = new GameObject("Judgement target").transform; marker.SetParent(go.transform, false);
-            VisualLibrary.MeshObject("Target ring",marker,library.TargetRing,library.Marker);
-            for (int i = 0; i < 4; i++)
+            // Two small world-space timing ticks, separate from the Note skin.
+            marker = new GameObject("Judgement ticks").transform; marker.SetParent(go.transform, false);
+            for (int i = 0; i < 2; i++)
             {
                 var tick = GameObject.CreatePrimitive(PrimitiveType.Cube); tick.name = "Timing tick";
                 UnityEngine.Object.Destroy(tick.GetComponent<Collider>());
-                float angle=i*Mathf.PI*.5f;
-                tick.transform.SetParent(marker, false);
-                tick.transform.localPosition = new Vector3(Mathf.Cos(angle),Mathf.Sin(angle),0)*1.57f;
-                tick.transform.localRotation=Quaternion.Euler(0,0,i*90);
-                tick.transform.localScale = new Vector3(.36f,.09f,.045f);
-                var renderer=tick.GetComponent<Renderer>();renderer.sharedMaterial = library.Marker;
-                renderer.shadowCastingMode=ShadowCastingMode.Off;renderer.receiveShadows=false;
+                tick.transform.SetParent(marker, false); tick.transform.localPosition = new Vector3(i == 0 ? -.95f : .95f,0,0);
+                tick.transform.localScale = new Vector3(.28f,.035f,.035f);
+                tick.GetComponent<Renderer>().sharedMaterial = library.Marker;
             }
         }
         public void Evaluate(SpatialDirector spatial, double time)
@@ -168,10 +150,10 @@ namespace GeometryRhythm
             line.enabled = visibility > .01f; marker.gameObject.SetActive(visibility > .01f);
             if (!line.enabled) return;
             for (int i = 0; i < vertices.Length; i++)
-                vertices[i] = spatial.Point(id, Mathf.Lerp(SpatialDirector.NearDepth - 3, spatial.VisiblePathFarDepth, i / (float)(vertices.Length-1)), time);
+                vertices[i] = spatial.Point(id, Mathf.Lerp(SpatialDirector.NearDepth - 3, SpatialDirector.FarDepth, i / (float)(vertices.Length-1)), time);
             line.SetPositions(vertices); line.widthMultiplier = .085f * visibility;
-            spatial.JudgementPose(id,time,out var position,out var rotation);
-            marker.SetPositionAndRotation(position,rotation);
+            marker.position = spatial.Point(id, SpatialDirector.NearDepth, time);
+            marker.rotation = Quaternion.LookRotation(spatial.Point(id, SpatialDirector.NearDepth + .1f,time) - marker.position, Vector3.up);
         }
     }
 

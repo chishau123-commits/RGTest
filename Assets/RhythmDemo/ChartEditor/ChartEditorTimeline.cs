@@ -6,7 +6,7 @@ namespace GeometryRhythm.ChartEditor
 {
     public sealed partial class RuntimeChartEditorController
     {
-        enum TimelineKind { Audio, Stage, X, Y, Z, Camera, Fov, Section, Offset, Note, Effect, Motion, VideoZ, ScreenAnchor, VideoPose }
+        enum TimelineKind { Audio, Stage, X, Y, Z, Camera, Fov, Section, Offset, Note, Effect, Motion }
         sealed class TimelineRow
         {
             public TimelineKind kind;
@@ -47,7 +47,7 @@ namespace GeometryRhythm.ChartEditor
 
         float TimelineHeight => ClampTimelineHeight(timelineHeight, ViewHeight);
         float TimelineTop => ViewHeight - TimelineHeight;
-        double TimelineDuration => mode == ChartEditMode.Stage && !VideoSpaceEditing
+        double TimelineDuration => mode == ChartEditMode.Stage
             ? Math.Max(Duration, spatial.RouteLength / spatial.UnitsPerSecond) : Duration;
         double TimelineSpan => Math.Max(.001, TimelineDuration / timelineZoom);
         Rect TimelineCanvas => new Rect(TimelineHeaderWidth, TimelineTop + TimelineHeaderHeight,
@@ -64,7 +64,9 @@ namespace GeometryRhythm.ChartEditor
         float TimelineX(double time) => TimelineCanvas.x + (float)((time - timelineStart) / TimelineSpan) * TimelineCanvas.width;
         int SnapTimelineTick(double time)
         {
-            return SnapBeatTick(tempo.BeatAtSeconds(Math.Max(0, time)));
+            double tick = tempo.BeatAtSeconds(Math.Max(0, time)) * chart.ticksPerBeat;
+            int grid = timelineSnap == 3 ? 1 : Math.Max(1, chart.ticksPerBeat / (1 << timelineSnap));
+            return (int)Math.Round(tick / grid, MidpointRounding.AwayFromZero) * grid;
         }
         void FollowTimelinePlayhead(float deltaTime)
         {
@@ -102,7 +104,7 @@ namespace GeometryRhythm.ChartEditor
         }
         void ApplyTimelinePointerTime(float x)
         {
-            if (timelineScrubbing) Seek(TimelineSeekTime(TimelineTimeAt(x)), false);
+            if (timelineScrubbing) Seek(TimelineTimeAt(x), false);
             else if (timelineDragItem != null)
             {
                 double time = tempo.SecondsAtBeat(timelineOriginalTick / (double)chart.ticksPerBeat) + TimelineTimeAt(x) - timelineGrabTime;
@@ -123,22 +125,7 @@ namespace GeometryRhythm.ChartEditor
         }
         List<TimelineRow> TimelineRows()
         {
-            var rows = new List<TimelineRow> { new TimelineRow { kind = TimelineKind.Audio, label = realAudioLoaded ? "SONG AUDIO" : "AUDIO" } };
-            if (VideoSpaceEditing)
-            {
-                // Notes need to sit directly below the waveform, not below all the
-                // spatial tracks. Camera Z and every XY track remain available below.
-                if (mode == ChartEditMode.Notes)
-                    for (int i = 0; i < chart.paths.Length; i++)
-                        rows.Add(new TimelineRow { kind = TimelineKind.Note, label = chart.paths[i].id + " / NOTES", path = i });
-                rows.Add(new TimelineRow { kind = TimelineKind.VideoZ, label = "CAMERA RAIL" });
-                rows.Add(new TimelineRow { kind = TimelineKind.VideoPose, label = "CAMERA POSE" });
-                // Anchor tracks are part of the video workspace, not a mode-specific
-                // overlay: if Camera Z is present, every path's XY track is present too.
-                for (int i = 0; i < chart.paths.Length; i++)
-                    rows.Add(new TimelineRow { kind = TimelineKind.ScreenAnchor, label = chart.paths[i].id + " / X% Y%", path = i });
-                return rows;
-            }
+            var rows = new List<TimelineRow> { new TimelineRow { kind = TimelineKind.Audio, label = "DEMO AUDIO" } };
             if (mode == ChartEditMode.Stage)
             {
                 rows.Add(new TimelineRow { kind = TimelineKind.Stage, label = "ROUTE POINTS" });
@@ -168,34 +155,7 @@ namespace GeometryRhythm.ChartEditor
         }
         IEnumerable<TimelineItem> TimelineItems(TimelineRow row)
         {
-            if (row.kind == TimelineKind.VideoZ)
-                for (int i = 0; i < chart.videoSpace.cameraZKeys.Length; i++)
-                {
-                    var key = chart.videoSpace.cameraZKeys[i];
-                    yield return new TimelineItem { kind = row.kind, data = key, index = i,
-                        time = VideoKeyTime(key.tick), label = "Z " + key.z.ToString("0.##") };
-                }
-            else if (row.kind == TimelineKind.ScreenAnchor)
-            {
-                var keys = chart.paths[row.path].screenAnchors;
-                for (int i = 0; i < keys.Length; i++)
-                    yield return new TimelineItem { kind = row.kind, data = keys[i], index = i, path = row.path,
-                        time = VideoKeyTime(keys[i].tick), label = $"{keys[i].xPercent:0.#}% / {keys[i].yPercent:0.#}%" };
-            }
-            else if (row.kind == TimelineKind.VideoPose)
-            {
-                var keys = chart.videoSpace.cameraPoseKeys;
-                if (keys != null) for (int i = 0; i < keys.Length; i++)
-                {
-                    var key = keys[i];
-                    bool onRail = Mathf.Abs(key.dx) < .01f && Mathf.Abs(key.dy) < .01f && Mathf.Abs(key.dz) < .01f &&
-                        Mathf.Abs(key.yaw) < .01f && Mathf.Abs(key.pitch) < .01f && Mathf.Abs(key.roll) < .01f;
-                    yield return new TimelineItem { kind = row.kind, data = key, index = i,
-                        time = VideoKeyTime(key.tick),
-                        label = onRail ? "ON RAIL" : $"{key.dx:0.#},{key.dy:0.#},{key.dz:0.#} · Y{key.yaw:0.#} P{key.pitch:0.#} R{key.roll:0.#}" };
-                }
-            }
-            else if (row.kind == TimelineKind.Stage)
+            if (row.kind == TimelineKind.Stage)
                 for (int i = 0; i < chart.stagePath.points.Length; i++)
                     yield return new TimelineItem { kind = row.kind, data = chart.stagePath.points[i], index = i,
                         time = spatial.RouteControlPointDistance(i) / spatial.UnitsPerSecond, label = "P" + i };
@@ -250,9 +210,6 @@ namespace GeometryRhythm.ChartEditor
         }
         bool TimelineItemSelected(TimelineItem item)
         {
-            if (item.kind == TimelineKind.VideoZ) return timelineSelection == item.kind && ((CameraZKey)item.data).tick == PlayheadTick;
-            if (item.kind == TimelineKind.VideoPose) return timelineSelection == item.kind && ((VideoCameraPoseKey)item.data).tick == PlayheadTick;
-            if (item.data is ScreenAnchorData anchor) return timelineSelection == TimelineKind.ScreenAnchor && anchor.tick == PlayheadTick && item.path == selectedPath;
             if (item.kind == TimelineKind.Stage) return item.index == selectedStagePoint;
             if (item.kind == TimelineKind.Camera) return item.index == selectedCameraKey;
             if (item.kind == TimelineKind.Section) return item.index == selectedSection;
@@ -264,13 +221,10 @@ namespace GeometryRhythm.ChartEditor
         void SelectTimelineItem(TimelineItem item)
         {
             timelineSelection = item.kind;
-            if (item.kind == TimelineKind.VideoZ) { selectedCameraZ = item.index; mode = ChartEditMode.Paths; videoInspector = VideoInspectorRail; inspectorScroll = Vector2.zero; }
-            if (item.kind == TimelineKind.VideoPose) { selectedCameraPose = item.index; mode = ChartEditMode.Paths; videoInspector = VideoInspectorPose; inspectorScroll = Vector2.zero; }
-            if (item.kind == TimelineKind.ScreenAnchor) { selectedPath = item.path; mode = ChartEditMode.Paths; videoInspector = VideoInspectorAnchors; inspectorScroll = Vector2.zero; }
             if (item.kind == TimelineKind.Stage) selectedStagePoint = item.index;
             else if (item.kind == TimelineKind.Camera) selectedCameraKey = item.index;
             else if (item.kind == TimelineKind.Section) selectedSection = item.index;
-            else if (item.kind == TimelineKind.Note) { selectedNote = item.index; selectedPath = item.path; inspectorScroll = Vector2.zero; }
+            else if (item.kind == TimelineKind.Note) { selectedNote = item.index; selectedPath = item.path; }
             else if (item.kind == TimelineKind.Offset) selectedPath = item.path;
             else if (item.kind == TimelineKind.Effect) selectedEffectClip = item.index;
             else if (item.kind == TimelineKind.Motion) selectedMotionClip = item.index;
@@ -279,7 +233,6 @@ namespace GeometryRhythm.ChartEditor
         }
         void BeginTimelineDrag(TimelineItem item, double mouseTime)
         {
-            if (item.kind == TimelineKind.VideoZ && (item.index == 0 || item.index == chart.videoSpace.cameraZKeys.Length - 1)) return;
             if (item.kind == TimelineKind.Stage ||
                 ((item.kind == TimelineKind.Camera || item.kind == TimelineKind.Section) && item.index == 0)) return;
             timelineDragItem = item; timelineGrabTime = mouseTime; timelineDragUndo = false;
@@ -287,9 +240,6 @@ namespace GeometryRhythm.ChartEditor
         }
         int ItemTick(TimelineItem item)
         {
-            if (item.data is CameraZKey zKey) return zKey.tick;
-            if (item.data is VideoCameraPoseKey poseKey) return poseKey.tick;
-            if (item.data is ScreenAnchorData anchor) return anchor.tick;
             if (item.data is CameraKey camera) return Mathf.RoundToInt(camera.beat * chart.ticksPerBeat);
             if (item.data is SectionData section) return Mathf.RoundToInt(section.startBeat * chart.ticksPerBeat);
             if (item.data is PathOffsetKey offset) return offset.tick;
@@ -303,9 +253,7 @@ namespace GeometryRhythm.ChartEditor
             if (item.kind == TimelineKind.Note || item.kind == TimelineKind.Section) maximum--;
             if (item.data is EffectClipData effectLimit) maximum -= effectLimit.durationTicks;
             if (item.data is CameraMotionClipData motionLimit) maximum -= motionLimit.durationTicks;
-            if (item.kind == TimelineKind.VideoZ && (item.index == 0 || item.index == chart.videoSpace.cameraZKeys.Length - 1)) return false;
-            if (item.kind == TimelineKind.Camera || item.kind == TimelineKind.Section || item.kind == TimelineKind.Offset ||
-                item.kind == TimelineKind.VideoZ || item.kind == TimelineKind.VideoPose || item.kind == TimelineKind.ScreenAnchor)
+            if (item.kind == TimelineKind.Camera || item.kind == TimelineKind.Section || item.kind == TimelineKind.Offset)
             {
                 var row = new TimelineRow { kind = item.kind, path = item.path };
                 var items = new List<TimelineItem>(TimelineItems(row));
@@ -316,18 +264,9 @@ namespace GeometryRhythm.ChartEditor
             }
             if (minimum > maximum) return false;
             tick = Mathf.Clamp(tick, minimum, maximum);
-            if (item.data is NoteData movingNote)
-            {
-                tick = ClampNoteTick(tick, true);
-                if (NoteAt(movingNote.pathId, tick, movingNote) >= 0)
-                { SetStatus("This path already has a note at that tick"); return false; }
-            }
             if (ItemTick(item) == tick) return false;
             if (!timelineDragUndo) { RecordUndo(); timelineDragUndo = true; }
-            if (item.data is CameraZKey zKey) zKey.tick = tick;
-            else if (item.data is VideoCameraPoseKey poseKey) poseKey.tick = tick;
-            else if (item.data is ScreenAnchorData screenAnchor) screenAnchor.tick = tick;
-            else if (item.data is CameraKey camera) camera.beat = tick / (float)chart.ticksPerBeat;
+            if (item.data is CameraKey camera) camera.beat = tick / (float)chart.ticksPerBeat;
             else if (item.data is SectionData section) section.startBeat = tick / (float)chart.ticksPerBeat;
             else if (item.data is PathOffsetKey offset) offset.tick = tick;
             else if (item.data is EffectClipData effect) effect.startTick = tick;
@@ -342,26 +281,14 @@ namespace GeometryRhythm.ChartEditor
             { Array.Sort(chart.effectClips, (a, b) => a.startTick.CompareTo(b.startTick)); selectedEffectClip = Array.IndexOf(chart.effectClips, movedEffect); }
             if (item.data is CameraMotionClipData movedMotion)
             { Array.Sort(chart.cameraMotionClips, (a, b) => a.startTick.CompareTo(b.startTick)); selectedMotionClip = Array.IndexOf(chart.cameraMotionClips, movedMotion); }
-            spatial = CreateEditorSpatial(); Seek(tempo.SecondsAtBeat(tick / (double)chart.ticksPerBeat));
+            spatial = new SpatialDirector(chart, tempo); Seek(tempo.SecondsAtBeat(tick / (double)chart.ticksPerBeat));
             return true;
         }
         bool AddTimelineItem(TimelineRow row, double time)
         {
-            if (row.kind == TimelineKind.VideoZ || row.kind == TimelineKind.VideoPose || row.kind == TimelineKind.ScreenAnchor)
-            {
-                Seek(VideoKeyTime(Mathf.Clamp(SnapTimelineTick(time), 0, Mathf.RoundToInt(chart.endBeat * chart.ticksPerBeat))));
-                if (row.path >= 0) selectedPath = row.path;
-                mode = ChartEditMode.Paths; inspectorScroll = Vector2.zero;
-                if (row.kind == TimelineKind.VideoZ) AddCameraZKey();
-                else if (row.kind == TimelineKind.VideoPose) AddCameraPoseKey();
-                else AddScreenAnchor();
-                return true;
-            }
             if (row.kind != TimelineKind.Camera && row.kind != TimelineKind.Note && row.kind != TimelineKind.Offset &&
                 row.kind != TimelineKind.Section && row.kind != TimelineKind.Effect && row.kind != TimelineKind.Motion) return false;
-            int tick = SnapTimelineTick(time);
-            if (row.kind == TimelineKind.Note) tick = ClampNoteTick(tick, true);
-            Seek(tempo.SecondsAtBeat(tick / (double)chart.ticksPerBeat));
+            Seek(tempo.SecondsAtBeat(SnapTimelineTick(time) / (double)chart.ticksPerBeat));
             if (row.path >= 0) selectedPath = row.path;
             if (row.kind == TimelineKind.Camera) AddCameraKey();
             else if (row.kind == TimelineKind.Note && CurrentBeat < chart.endBeat) AddNote();
@@ -392,7 +319,7 @@ namespace GeometryRhythm.ChartEditor
                     BeginTimelineDrag(item, time);
                 return true;
             }
-            Seek(TimelineSeekTime(time));
+            Seek(time);
             if (row.path >= 0) selectedPath = row.path;
             if (!AddTimelineItem(row, songTime)) timelineScrubbing = true;
             return true;
@@ -453,7 +380,7 @@ namespace GeometryRhythm.ChartEditor
                 draggingHandle = false; clearGuiFocus = true; e.Use(); return;
             }
             if (mouse.x >= canvas.x && mouse.x <= canvas.xMax && mouse.y >= canvas.y - 30 && mouse.y < canvas.y)
-            { SetPlaying(false); timelineScrubbing = true; clearGuiFocus = true; Seek(TimelineSeekTime(TimelineTimeAt(mouse.x))); e.Use(); return; }
+            { SetPlaying(false); timelineScrubbing = true; clearGuiFocus = true; Seek(TimelineTimeAt(mouse.x)); e.Use(); return; }
             if (mouse.y < canvas.y || mouse.y > canvas.yMax || mouse.x >= canvas.xMax) return;
             int rowIndex = Mathf.FloorToInt((mouse.y - canvas.y + timelineTrackScroll) / TimelineRowHeight);
             if (rowIndex < 0 || rowIndex >= rows.Count) return;
@@ -465,13 +392,6 @@ namespace GeometryRhythm.ChartEditor
             }
             if (mouse.x < canvas.x)
             {
-                if (VideoSpaceEditing && (rowData.kind == TimelineKind.VideoZ || rowData.kind == TimelineKind.VideoPose || rowData.kind == TimelineKind.ScreenAnchor))
-                {
-                    mode = ChartEditMode.Paths;
-                    videoInspector = rowData.kind == TimelineKind.VideoZ ? VideoInspectorRail
-                        : rowData.kind == TimelineKind.VideoPose ? VideoInspectorPose : VideoInspectorAnchors;
-                    timelineSelection = rowData.kind; inspectorScroll = Vector2.zero;
-                }
                 if (rowData.path >= 0) { selectedPath = rowData.path; RebuildVisuals(); }
                 clearGuiFocus = true; e.Use(); return;
             }
@@ -488,11 +408,8 @@ namespace GeometryRhythm.ChartEditor
         }
         void BuildTimelineWaveform()
         {
+            timelineWaveform = new float[1024]; timelineWavePeak = .0001f;
             var clip = audioSource == null ? null : audioSource.clip;
-            // One peak bin per millisecond (bounded for very long songs). Zooming
-            // must expose transients instead of magnifying a 1024-bin thumbnail.
-            timelineWaveform = new float[clip == null ? 1 : Mathf.Clamp(Mathf.CeilToInt(clip.length * 1000), 1024, 600000)];
-            timelineWavePeak = .0001f;
             if (clip == null || clip.samples == 0) return;
             const int frames = 4096;
             var buffer = new float[frames * clip.channels];
@@ -535,13 +452,12 @@ namespace GeometryRhythm.ChartEditor
             TimelineBox(new Rect(ViewWidth * .5f - 24, TimelineTop + 2, 48, 2), new Color(.7f, .76f, .8f));
             float x = 10, y = TimelineTop + 10;
             TimelineButton(ref x, y, 62, playing ? "Pause" : "Play", () => SetPlaying(!playing), true);
-            TimelineButton(ref x, y, 54, "- Step", () => StepPlayhead(-1, false));
-            TimelineButton(ref x, y, 54, "+ Step", () => StepPlayhead(1, false));
-            if (!VideoSpaceEditing) TimelineButton(ref x, y, 132, chartCameraPreview ? "Exit Preview" : "Preview  F5", ToggleCameraPreview, chartCameraPreview);
-            else { GUI.Label(new Rect(x + 4, y, 86, 28), "FIXED / 16:9", timelineSmall); x += 94; }
-            GUI.Label(new Rect(x + 4, y, 260, 28), FormatTimelineTime(songTime) + " / " + FormatTimelineTime(Duration) + "   B " + CurrentBeat.ToString("0.###"), timelineLabel);
-            x = Mathf.Max(x + 264, ViewWidth - 258);
-            TimelineButton(ref x, y, 90, "Snap " + BeatSnapLabel, CycleBeatSnap);
+            TimelineButton(ref x, y, 54, "- Beat", () => Seek(tempo.SecondsAtBeat(Math.Max(0, CurrentBeat - 1))));
+            TimelineButton(ref x, y, 54, "+ Beat", () => Seek(tempo.SecondsAtBeat(Math.Min(chart.endBeat, CurrentBeat + 1))));
+            TimelineButton(ref x, y, 132, chartCameraPreview ? "Exit Preview" : "Preview  F5", ToggleCameraPreview, chartCameraPreview);
+            GUI.Label(new Rect(x + 4, y, 198, 28), FormatTimelineTime(songTime) + " / " + FormatTimelineTime(Duration) + "   B " + CurrentBeat.ToString("0.##"), timelineLabel);
+            x = Mathf.Max(x + 202, ViewWidth - 258);
+            TimelineButton(ref x, y, 90, new[] { "Snap 1", "Snap 1/2", "Snap 1/4", "Snap OFF" }[timelineSnap], () => timelineSnap = (timelineSnap + 1) % 4);
             TimelineButton(ref x, y, 30, "-", () => ZoomTimeline(.5f));
             TimelineButton(ref x, y, 30, "+", () => ZoomTimeline(2));
             TimelineButton(ref x, y, 42, "Fit", () => { timelineZoom = 1; timelineStart = 0; });
@@ -585,35 +501,6 @@ namespace GeometryRhythm.ChartEditor
         void DrawTimelineActions(float y)
         {
             float x = 10;
-            if (mode == ChartEditMode.Notes && !chartCameraPreview)
-            {
-                TimelineButton(ref x, y, 92, "+ Note  N", AddNote, false, CurrentBeat < chart.endBeat);
-                TimelineButton(ref x, y, 90, "Snap note Q", SnapSelectedNote, false, SelectedTimingNote != null && BeatSnapDivisor > 0);
-                TimelineButton(ref x, y, 74, "Delete", DeleteSelection, false, SelectedTimingNote != null);
-                TimelineButton(ref x, y, 108, metronomeEnabled ? "Click ON  M" : "Click OFF M", ToggleMetronome, metronomeEnabled);
-                if (VideoSpaceEditing)
-                {
-                    TimelineButton(ref x, y, 28, "-", () => SetNoteReadSpeed(noteReadSpeed - .25f));
-                    GUI.Label(new Rect(x + 2, y, 90, 28), "Scroll " + noteReadSpeed.ToString("0.##") + "x", timelineLabel); x += 94;
-                    TimelineButton(ref x, y, 28, "+", () => SetNoteReadSpeed(noteReadSpeed + .25f));
-                    TimelineButton(ref x, y, 36, "8x", () => SetNoteReadSpeed(NoteScrollSettings.Default));
-                    GUI.Label(new Rect(x + 6, y, 154, 28), "Spawn: PATH END", timelineSmall); x += 160;
-                }
-                GUI.Label(new Rect(x + 6, y, ViewWidth - x - 12, 28), "Arrows: step  |  Alt+arrows: move note  |  Ctrl+wheel: zoom", timelineSmall);
-                return;
-            }
-            if (VideoSpaceEditing)
-            {
-                TimelineButton(ref x, y, 86, "+ Z key", () => { mode = ChartEditMode.Paths; AddCameraZKey(); });
-                TimelineButton(ref x, y, 92, "+ Pose key", () => { mode = ChartEditMode.Paths; AddCameraPoseKey(); });
-                TimelineButton(ref x, y, 104, "+ XY anchor", () => { mode = ChartEditMode.Paths; AddScreenAnchor(); });
-                if (mode == ChartEditMode.Notes) TimelineButton(ref x, y, 86, "+ Note", AddNote, false, CurrentBeat < chart.endBeat);
-                TimelineButton(ref x, y, 74, "Delete", DeleteTimelineSelection);
-                GUI.Label(new Rect(x + 6, y, ViewWidth - x - 12, 28), "Rail " + spatial.DistanceAtTime(songTime).ToString("0.###") +
-                    "  |  " + CameraPoseSummary() +
-                    "  ·  Left-click: add/select  ·  Drag: retime  ·  Right-click: delete", timelineLabel);
-                return;
-            }
             if (chartCameraPreview)
             {
                 TimelineButton(ref x, y, 90, "Restart", () => { Seek(0); SetPlaying(true); });
@@ -670,11 +557,10 @@ namespace GeometryRhythm.ChartEditor
                 TimelineButton(ref x, y, 78, "Delete", DeleteTimelineSelection, false, selectedMotionClip >= 0);
                 GUI.Label(new Rect(x + 6, y, ViewWidth - x - 10, 28), "Left-click empty track to add; right-click a clip to delete. F5 previews the final shot.", timelineLabel);
             }
-            else GUI.Label(new Rect(14, y, ViewWidth - 28, 28), "Video BGA follows the song clock. Author gameplay in Stage, Paths or Notes; visuals stay in the video.", timelineLabel);
+            else GUI.Label(new Rect(14, y, ViewWidth - 28, 28), "Map preview  /  audio and playhead. Edit timed content in Stage, Camera, Paths or Notes.", timelineLabel);
         }
         void DeleteTimelineSelection()
         {
-            if (DeleteVideoTimelineSelection()) return;
             if (mode == ChartEditMode.Effects) { if (selectedEffectClip >= 0) DeleteEffectClip(); return; }
             if (mode == ChartEditMode.CameraMotion) { if (selectedMotionClip >= 0) DeleteMotionClip(); return; }
             if (mode != ChartEditMode.Paths) { DeleteSelection(); return; }
@@ -690,7 +576,7 @@ namespace GeometryRhythm.ChartEditor
                 Change(() => { var list = new List<PathOffsetKey>(path.offsetKeys); list.RemoveAll(k => k.tick == tick); path.offsetKeys = list.ToArray(); }, "Offset key removed");
             }
         }
-        static string FormatTimelineTime(double time) => ((int)time / 60).ToString("00") + ":" + (time % 60).ToString("00.000");
+        static string FormatTimelineTime(double time) => ((int)time / 60).ToString("00") + ":" + (time % 60).ToString("00.00");
         double TimelineTickStep()
         {
             double target = TimelineSpan * 95 / TimelineCanvas.width;
@@ -699,7 +585,6 @@ namespace GeometryRhythm.ChartEditor
         }
         void DrawTimelineRuler(Rect canvas)
         {
-            if (mode == ChartEditMode.Notes) { DrawBeatRuler(canvas); return; }
             GUI.BeginGroup(new Rect(canvas.x, canvas.y - 30, canvas.width, 30));
             double step = TimelineTickStep();
             for (double t = Math.Ceiling(timelineStart / step) * step; t <= timelineStart + TimelineSpan + .0001; t += step)
@@ -707,7 +592,7 @@ namespace GeometryRhythm.ChartEditor
                 float x = TimelineX(t) - canvas.x;
                 TimelineBox(new Rect(x, 0, 1, 30), new Color(.3f, .34f, .39f));
                 GUI.Label(new Rect(x + 4, 0, 90, 14), FormatTimelineTime(t), timelineSmall);
-                GUI.Label(new Rect(x + 4, 14, 90, 14), VideoSpaceEditing ? "Z " + spatial.DistanceAtTime(t).ToString("0.##") : "B " + tempo.BeatAtSeconds(t).ToString("0.##"), timelineSmall);
+                GUI.Label(new Rect(x + 4, 14, 90, 14), "B " + tempo.BeatAtSeconds(t).ToString("0.##"), timelineSmall);
             }
             float head = TimelineX(songTime) - canvas.x;
             TimelineBox(new Rect(head - 4, 0, 8, 8), Color.white);
@@ -716,23 +601,19 @@ namespace GeometryRhythm.ChartEditor
         }
         void DrawTimelineRow(TimelineRow row, float y, Rect canvas)
         {
-            if (mode == ChartEditMode.Notes) DrawBeatGrid(y, canvas);
-            else
-            {
-                double step = TimelineTickStep();
-                for (double t = Math.Ceiling(timelineStart / step) * step; t <= timelineStart + TimelineSpan; t += step)
-                    TimelineBox(new Rect(TimelineX(t) - canvas.x, y, 1, TimelineRowHeight), new Color(.15f, .17f, .2f));
-            }
+            double step = TimelineTickStep();
+            for (double t = Math.Ceiling(timelineStart / step) * step; t <= timelineStart + TimelineSpan; t += step)
+                TimelineBox(new Rect(TimelineX(t) - canvas.x, y, 1, TimelineRowHeight), new Color(.15f, .17f, .2f));
             if (row.kind == TimelineKind.Audio)
             {
                 if (timelineWaveform == null || audioSource.clip == null) return;
                 float center = y + TimelineRowHeight * .5f;
                 for (float x = 0; x < canvas.width; x += 2)
                 {
-                    double time = TimelineTimeAt(x + canvas.x), next = TimelineTimeAt(x + canvas.x + 2);
-                    float peak = WaveformPeakAt(time, next);
-                    if (peak < 0) continue;
-                    float height = Mathf.Max(1, peak / timelineWavePeak * 15);
+                    double time = TimelineTimeAt(x + canvas.x);
+                    if (time >= audioSource.clip.length) break;
+                    int bin = Mathf.Clamp((int)(time / audioSource.clip.length * timelineWaveform.Length), 0, timelineWaveform.Length - 1);
+                    float height = Mathf.Max(1, timelineWaveform[bin] / timelineWavePeak * 15);
                     TimelineBox(new Rect(x, center - height, 1.5f, height * 2), new Color(.2f, .66f, .69f));
                 }
                 return;
@@ -762,18 +643,12 @@ namespace GeometryRhythm.ChartEditor
                     GUI.Label(new Rect(textX, r.y, Mathf.Max(0, r.xMax - textX - 4), r.height), item.label, timelineLabel);
                 }
                 else if (item.kind == TimelineKind.Note) GUI.Label(new Rect(r.x + 3, r.y, r.width, r.height), item.label, timelineSmall);
-                else
-                {
-                    float labelWidth = VideoSpaceEditing ? 100 : 56;
-                    float labelX = r.x + 18 + labelWidth > canvas.width ? r.x - labelWidth - 4 : r.x + 18;
-                    GUI.Label(new Rect(labelX, r.y - 1, labelWidth, 22), item.label, timelineSmall);
-                }
+                else GUI.Label(new Rect(r.x + 18, r.y - 1, 56, 22), item.label, timelineSmall);
             }
             if (!any && row.kind == TimelineKind.Offset)
                 GUI.Label(new Rect(14, y, canvas.width - 28, TimelineRowHeight), "Left-click to add an offset key at this beat", timelineSmall);
             if (!any && row.kind == TimelineKind.Note)
-                GUI.Label(new Rect(14, y, canvas.width - 28, TimelineRowHeight), "Click to add on beat grid  /  N: add at playhead", timelineSmall);
-            if (row.kind == TimelineKind.Note) DrawNoteInsertionGuide(y, canvas);
+                GUI.Label(new Rect(14, y, canvas.width - 28, TimelineRowHeight), "Left-click to add a note", timelineSmall);
         }
         void DrawTimelineCurve(TimelineKind kind, float y, Rect canvas)
         {

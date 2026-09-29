@@ -1,151 +1,134 @@
 # Geometry Chart Studio
 
-这是一个 Windows 桌面 3D 制谱器。当前主流程：**在任意外部工具中完成 BGA 视频 → 一键导入成片 → 制谱器按歌曲时间播放视频，在前面编辑 3D Paths、Notes → 导出单个 `.grchart` 谱面包**。视频谱面只保留 Path，不再区分 Stage/Scene 线与 Path 线。
+这是游戏共用空间内核之上的第一版电脑端制谱器。它使用普通 Unity Runtime API，而不是只能在 Unity 编辑器中运行的 `EditorWindow`，因此同一个场景可以构建为 Windows 桌面程序。
 
-视频谱面现在使用**统一编辑/播放视图**，直接按原 Preview 的路径、Note 和判定圈效果编辑，不再切换到只读 Preview。相机默认固定 X=0、Y=0、朝向 +Z、FOV=53°，只有沿轨道的**里程**根据时间轴关键帧前进；新增的 **Camera pose** 轨道可以把它从这条直线上挪开、转头和改焦距，全 0 时与旧版逐位相同。右键旋转、中键平移、Caps Lock 飞行、F 聚焦和缩放均禁用；隐藏视频也不会解除约束。视频必须为 **16:9、方形像素**，其他比例明确拒绝，不拉伸也不裁切。视频没有真实景物深度遮挡。
-
-## 当前工作流
-
-1. 在外部完成 BGA 视频。AI、ComfyUI、Blender、剪辑软件都可以；制谱器不依赖生成方式。
-2. 在 **Files → Import / replace video** 或 BGA 页点击 **Import Video**，选择 MP4/MOV/MKV/WebM/AVI，或 `video-bga` 包的 `manifest.json`。普通视频自动转为 H.264 High / yuv420p / 60 fps / GOP 15，提取音轨并校验解码后再替换当前 BGA。失败不会清空已有 BGA。静音视频不会覆盖单独选择的歌曲。
-3. 在 **Paths** 页制作每条路径独立的屏幕百分比锚点，并在同一页的 **Camera rail** 面板设置公共里程轨道、在 **Camera pose** 面板设置机位；在 **Notes** 页放置音符。打开视频谱面直接进入 Paths。
-4. 需要换画面时重新导入视频，不改已有路线、路径、Note 和 BPM。BGA 页可以单独 **Import / replace song**、调整视频时间偏移或隐藏画面。视频与音乐分别解码，避免双重播放音轨。
-5. `Ctrl+S` 保存工作副本。交付时选择 **Files → Export .grchart package**，视频、音频、BGA 清单和谱面 JSON 会封装为一个文件。另一位谱师用 **Open chart / package** 直接打开。
-
-播放使用与 `PlayScheduled` 共用的音频 DSP 采样时钟，不累积渲染帧时间，也不会把音频 EOF 时重置到 0 的读取值误当成歌曲回到开头。暂停时直接定位到目标视频帧；连续拖动只保留最新 Seek，避免解码请求堆积。视频早于偏移点时隐藏、结束后停在末帧。BGA 的摄像机运动已经在视频中，不再从 Blender GLB 重建。
-
-详细的一键导入约定、素材目录和复现命令见 [VideoBgaWorkflow.md](VideoBgaWorkflow.md)。
-
-视频谱面顶部只保留三个工作区：**BGA / Paths / Notes**，快捷键分别是 `1`–`3`（`4` 也可进入 Notes）。旧 Stage 入口在视频模式中映射至 Paths。**每个页面的时间轴始终同时包含 Camera rail、Camera pose 和所有 Path 的 X%/Y% 锚点行**；Notes 页面将所有 Note 行放在音频波形正下方，Camera rail / Camera pose / Path XY 保留在下方，轨道较多时可纵向滚动。旧的 Scene、Effects、Motion、Map 编辑入口继续隐藏；无视频的历史谱面仍可使用旧编辑方式。
-
-## 旧版 Blender 3D 包（兼容）
-
-旧版源工程为 `BGA/blender/Firefly_the_Summer_Opening_v03.blend`，导出包为 `BGA/exports/Firefly_the_Summer_Opening_v03/`。以下描述只适用于带 `blenderBga` 字段且未启用新视频的历史谱面；不再是新谱面的默认流程。
-
-包内包含：
-
-- `scene.glb`：模型、层级、材质、骨骼/对象动画、相机和 glTF 支持的灯光；
-- `timeline.json`：活动相机切换、对象显隐、灯光状态和世界颜色；
-- `background.png`：从 Blender World 节点烘焙的全景背景；
-- `manifest.json`：源 `.blend`、SHA-256、Blender 版本、帧率、时长和资源统计。
-
-制谱器用歌曲绝对时间直接采样 3D 动画。因此暂停、Seek、拖动时间轴或低帧率播放都不会产生累计漂移。BGA 场景有独立的运行时根节点，编辑路径和 Note 不会重新载入大型 GLB。
-
-导出器还会逐帧烘焙 Blender 依赖图计算后的活动镜头（位置、朝向、焦距与裁剪面），因此 Track To、Follow Path、父子层级和驱动器造成的运镜不会在制谱器中丢失。
-
-**BGA camera · FOLLOWING** 使用 Blender 当前镜头；切换到 **FREE INSPECTION** 后可以在动画继续运行时自由观察场景。F5 预览始终使用 Blender 镜头。
-
-Blender 的 glTF 导出器不能原样表达 EEVEE/Cycles 合成器节点、任意材质参数动画和 Area Light 类型。这些内容需要在 Unity 中做对应 Shader/后处理扩展；当前桥接会保留可导出的真实 3D 内容，并用 sidecar 补齐相机切换、显隐和灯光数值，Area Light 会由 Unity 光照近似。
-
-## 构建与启动
+## 启动与构建
 
 - Unity 菜单：`Geometry Rhythm → Chart Studio → Create or Open Desktop Editor`
 - Windows 构建：`Geometry Rhythm → Chart Studio → Build Windows Editor`
-- 输出：`Builds/GeometryChartStudio/GeometryChartStudio.exe`
-- 当前主版本入口：`Builds/GeometryChartStudio/Open-Summer20-H3.cmd`（已覆盖为统一视频编辑版本；原程序的被替换文件保存在 `Builds/Backups/`，谱面草稿与素材不变）。
-- 可用 `-chart "D:\Charts\example.json"` 或 `-chart "D:\Charts\example.grchart"` 指定谱面/谱面包。
+- 构建结果：`Builds/GeometryChartStudio/GeometryChartStudio.exe`
+- 最新“稳定 Playhead 十字与可选相机段曲线”版本已覆盖到固定入口 `Builds/GeometryChartStudio/GeometryChartStudio.exe`，并保留 K0→K1 固定端点修正、黄球居中及编辑视角不跟随，后续使用此入口即可。`GeometryChartStudio-EditingPlayback` 保留较早的编辑播放版本，`GeometryChartStudio-StaticNotes` 和 `GeometryChartStudio-Timeline` 为更早版本。
+- 可以用 `-chart "D:\Charts\example.json"` 指定启动时载入和保存的谱面路径。
 
-构建将视频导入所需的独立 FFmpeg 程序复制到 `BGA/Tools/`，并优先把独立 Path 格式的 `Summer20_H3_PathOnly_20s.grchart` 放到 `Charts/`（若尚未生成，则附带旧起步包，打开时迁移新坐标）。双击 `Open-Summer20-H3.cmd` 可直接打开本次20秒起步谱面。旧 Blender 资源仅为历史谱面兼容保留，不再显示 Blender 导入按钮。
+播放器自检入口：`-chartEditorSmoke -chartEditorCapture "D:\Capture"`。程序会保存界面截图和 `chart-studio-smoke.txt` 后自动退出。
 
-Blender 自动查找顺序为环境变量 `BLENDER_EXE`、`D:\Programs\Blender\blender.exe`、Blender 5.2 默认安装位置。
+额外加 `-chartEditorInteractionSmoke` 会运行坐标轴连续拖拽、撤销/重做、飞行切换、相机落点、路径偏移关键点和 JSON 往返测试，保存 `interaction-checks.txt` 及三个工具页截图。测试不写入用户草稿。
 
-## 制谱操作
+没有 `-chart` 参数时，会尝试载入 `Application.persistentDataPath/geometry-chart-draft.json`。文件操作统一在右上角完成：**Files** 展开 **New / Load / Save As**；**Load / Save As** 使用 Windows 文件选择窗口，支持中文路径，Save As 会提示覆盖已有文件。**Save / Ctrl+S** 保存当前文件，新建的未命名谱面首次保存会让你选位置，`Ctrl+Shift+S` 另存为。左侧只显示文件名，不再通过手写路径切换文件。新建和载入前若有未保存修改，会提供 Save & Continue / Discard changes / Cancel；取消或载入失败不会替换当前谱面。
 
-- **Camera rail / 里程（Paths 页内）**：修改当前时刻的里程（自动插入关键帧）；时间轴 `CAMERA RAIL` 行添加/选择/拖动关键帧。里程必须递增，首末关键帧固定在谱面起终点。点击 `To next key` 切换线性、缓入、缓出、平滑或更平滑补间。它只决定音符和锚点沿轨道走多快，首末关键帧固定、不控制画面构图；不再附带 Scene 线。
-- **Camera pose / 机位（Paths 页内）**：给相机加一条独立机位轨道，每个关键帧 7 个数。**Offset X / Y / Z** 把相机从里程直线上挪开（+X 向右、+Y 向上、+Z 沿歌更深）；**Yaw** 左右摇头、**Pitch** 抬头低头、**Roll** 歪头；**FOV** 控制广角/长焦。时间轴 `CAMERA POSE` 行添加/选择/拖动关键帧，右侧状态栏会显示 `camera ON RAIL` 或当前偏离距离与三个角度。`Reset this key to the straight rail` 一键清空这一帧。**全部为 0 时与旧版本逐位相同**，旧谱面无需迁移。
-  - 想让谱面跟着视频平移：让 Offset X/Y 跟视频镜头一起动。想做出纵深：Offset Z 往前推、FOV 保持或加大。想压平成 2D 平面感：Offset Z 往后拉、FOV 收窄。想拐弯：让 Offset 或 Yaw 随时间连续变化。
-  - 平面视频不会跟着相机转：大幅 Yaw/Pitch 会让 3D 前景和视频画面分家，小角度、推拉和平移最容易融进去。
-- **Paths / Path anchors**：选路径，在 `X (%)` / `Y (%)` 输入精确坐标，或拖动画面里的黄色十字。Shift+单击画面可把当前时间锚点放到鼠标位置；时间轴可以添加、拖动时间或右键删除。每条 Path 根据自己的锚点独立补间，不受其他 Path 影响。点击任意页面的 Path 行或锚点会直接打开对应 Path 的编辑面板。
-- **Notes**：选择 Path、TAP/DRAG 与保护属性，在播放头添加音符；可在 3D 视图或时间轴中选择并移动。
-- `Ctrl+S` 保存，`Ctrl+Z/Ctrl+Y` 撤销/重做，Delete 删除当前选中的 rail/pose/Path 锚点或 Note。
-- F5 / Space 在当前编辑视图内播放/暂停，面板和画幅不切换。播放中暂时禁用画面拖拽；暂停后继续编辑。
+程序默认以可调整大小的 `1440×900` 窗口启动，不会强制全屏。右上角 **Settings** 可以在 100%、125%、150%、175% 之间调整界面缩放，选择会在下次启动时保留。
 
-## Note 节拍编辑
+右上角只保留 **Files / Settings / Save**。使用说明移到 Settings → Charting guide。界面滚动条改为无箭头、无金属高光的细轨道，滑块绘制宽度约 6 px，保留 12 px 的抓取区域；地图参数滑条也采用扁平样式。
 
-Notes 页使用音乐拍线，而不是把等间隔的秒线当作节拍。`B 0` 表示谱面起点；亮线为整拍、更亮线每 4 拍分组（不是自动识别歌曲的拍号），细线为当前吸附细分。缩小时隐藏过密细线，放大后显示；实际吸附精度不随缩放降低。支持变速 BPM 的 TempoMap。
+## 当前工作流
 
-- 点击 **Snap** 循环切换 `1 → 1/2 → 1/4 → 1/8 → 1/16 → 1/3 → 1/6 → 1/12 → OFF`。单位都是**拍的分数**：`1/4` 是四分之一拍，不是四分音符。默认 `1/4`。
-- **N / + Note / 点击空白 Note 行**统一使用吸附。鼠标悬停显示黄色落点线；拖动 Note 也遵循同一规则。同一 Path 同一 tick 不重复添加、不允许拖出重叠音符；不同 Path 可以同拍同时发音。结尾吸附到最后一个合法拍点，不落在 `endBeat` 上。
-- **← / →** 或 **- Step / + Step**：移动播放头到上/下一个格点；**Shift+←/→**：整拍步进。Notes 页拖动标尺或波形同样吸附；选择 `Snap OFF` 可自由定位。
-- **Alt+←/→**：移动选中的 Note 一个吸附格；**Alt+Shift+←/→**：移动 1 tick。**Q / Snap selected**：仅量化所选 Note，显示将移动的毫秒数。已有音符不会在升级、打开文件或切换 Snap 时自动量化。
-- 选中 Note 后，侧栏上方显示精确 beat、tick、毫秒时间；输入 **Beat** 并点击 **Set exact** 可精确修改，不强制吸附。一次连续拖动只有一个撤销步骤；插入、微调、量化和删除均可撤销。
-- **M / Click ON**：编辑器节拍器，Space 开始试听。整拍点击、每 4 拍重音，与歌曲使用同一 DSP 时钟，Seek 重置相位，暂停取消已调度点击。节拍器只用于编辑，不写入音频或谱面包。
-- **Ctrl+滚轮**在鼠标位置缩放；波形按约 1ms 峰值缓存（最长 60 万格），绘制时保留每个像素区间的最大峰值，并正确考虑音频偏移。
+1. **Stage**：以 Catmull–Rom 样条绘制舞台主轴。单击球形控制点，再拖动红 X、绿 Y、蓝 Z 坐标轴；Y 可以直接改变高度，不再限制在地面。拖中心小方块可在视图平面内移动。Shift+单击地面添加点；也可用 Insert 在两个点之间插点。按 F 聚焦选中点，方便编辑远处的点。一次连续拖拽对应一次撤销。
+2. **Camera**：黄色球表示**即将新增的相机位置**，不是注视目标。把球移到希望的位置，移动播放头，然后按 **Add Key at yellow marker**。新关键帧准确落在球的位置，朝向与当前视图一致；同一拍点再次添加会替换原关键帧。选中已有相机点也可用 XYZ 轴移动；Move selected key to marker 将选中点移到球的位置。
 
-### 音符流速与远端出生
+相邻相机点 K 之间显示橙色细线，线段中点的小按钮表示这一段的移动曲线。点击可选择 **Linear / Ease In / Ease Out / Ease In-Out / Smoother**；曲线属于前一个 K 点到后一个 K 点的区段，同时作用于位置、朝向、FOV 和 Roll。旧谱面没有曲线字段时保持原来的 Ease In-Out，不需要迁移。
+3. **Paths**：选路径，定位播放头拍点（可在 Beat 输入），按 F 聚焦横截面。拖红 X、绿 Y，或拖中心方块同时改变二维偏移。这个平面始终垂直于舞台路线。操作自动在当前拍点建立偏移关键点；换到另一个拍点继续设置，路径在关键点之间平滑过渡，其他关键点不会整体跟着移动。Previous/Next key 跳转关键点，Delete offset key 删除当前关键点。布局段仍用于原有谱面的路径布局管理。
+4. **Notes**：选择 Path、Tap/Drag 和保护属性，在播放头放置音符。**编辑模式显示全部音符**：每个 Note 固定在自身拍点对应的路径判定位置，拖播放头、播放音乐或切换工具都不会让它流动或消失。Note 路径也完整、静止地显示。只有修改音符拍点、路径或舞台数据才会改变其固定位置。点击场景中的音符或时间轴上的音符，再按 **F / Focus note** 聚焦；切到 Camera 后可继续用这个视角布置相机。
+5. **Map**：用 Seed、走廊宽度、密度和高度变化生成确定性的抽象几何地图。主轴两侧保留安全走廊。
 
-视频谱面的音符从 **Path 最远端** 进入，再沿完整轨道接近判定圈。轨道绘制和音符可见性共用同一个远端边界（相机相对深度 100），不再分别使用轨道 100、音符 60 的截断。界面显示 **Spawn: PATH END**，移除独立 Spawn 调节；旧版保存的 Spawn 偏好不再读取，无需用户手动重置。
+顶部标签只显示 Stage / Camera / Paths / Notes / Map；快捷键 `1`–`5` 仍可切换工具，`Ctrl+S` 保存，`Ctrl+Z/Ctrl+Y` 撤销/重做，Delete 删除当前可删除对象。输入文本时不触发这些场景快捷键。左侧面板内容过长时可以滚动。
 
-**Scroll** 默认 **8×**，Notes 侧栏和时间轴的 `- / +` 每次调整 0.25×，范围 **0.5×–48×**；`[` / `]` 也可调整。侧栏提供 **4× / 6× / 8× / 10× / 12×** 快速档位，时间轴 `8x` 恢复推荐速度，侧栏 `1x` 恢复原运动速度。任何倍率下出生边界都与轨道远端一致。
+## 多轨时间轴
 
-当前 H3 的线性 Camera Z 速度为 5 单位/秒，音符从深度 100 到判定深度 7 的完整飞行时间由旧 3× 的 **6.2 秒**缩短为默认 8× 的 **2.325 秒**（10× 为 1.86 秒，12× 为 1.55 秒）。音符因此更晚从相同的远端进入、以更高速度接近，同时在屏音符更少；不是删除音符或在中段裁掉它们。侧栏 **Ahead here** 显示当前可见范围覆盖的未来时长，考虑 Z 缓动与 BPM 变化，并限制在谱面结束之前；它不是额外的时间截断。
+底部现在是类似剪辑软件的操作区。拖动最上沿的分隔条可调整高度，松手后会记住高度；3D 视口和左侧面板同步调整，不能把视口完全挤没。
 
-倍率仅作用于音符到判定面的剩余距离。音符沿原 Path 接近，判定拍点、判定位置、BPM、音频偏移、Path 百分比锚点、Camera Z、FOV 均不改。播放中调速不会重启音频时钟。1× 恢复该谱面的完整阅读窗口（视频谱面按轨道里程，无视频谱面按 `approachSeconds`）。无视频谱面没有可伸缩的相机里程，因此共享流速改为缩放它自己的 `approachSeconds` 窗口：`窗口 = approachSeconds × 8 / 流速`，并限制在 0.35–12 秒；推荐速度 8× 得到的正是谱面写入的 `approachSeconds`，所以默认设置下旧谱面逐位不变（`ChartEditorNoteSpeedChecks` 会断言这一点）。打开谱面、拖动播放头或从中途开始时，直接还原该时刻的音符位置，不将已经在路上的音符送回远端、推迟判定或凭空增加音乐前奏；此修复不添加开头预滚。
+| 视图 | 下方轨道 | 操作 |
+| --- | --- | --- |
+| Stage | 音频、舞台控制点、X/Y/Z 曲线 | 点击控制点定位并聚焦；时间由舞台弧长和速度决定，位置仍在 3D 里调整。歌曲结束后的路线尾段也显示。 |
+| Camera | 音频、相机关键帧、FOV 曲线 | 拖关键帧改时间，双击空白关键帧轨道在黄球位置添加。第 0 拍关键帧固定。 |
+| Paths | 音频、Layout Sections 区段、各路径的 Offset 关键点 | 原左侧 Layout Sections 已移到这里。点片段选区段；拖片段左沿改开始时间；下方工具行可新建、改名、删除区段。偏移关键点独立按路径排列，可拖动改时间。 |
+| Notes | 音频、每条路径自己的音符轨道 | 点击选音符，拖动改时间；双击空白音符轨道添加。T 表示 Tap、D 表示 Drag，琥珀色表示保护音符。 |
 
-流速仍作为本机个人阅读偏好保存，编辑器和游戏运行时代码共享；不计入谱面撤销栈、不把当前谱面标记为修改、不写入 `.grchart`。本次更新将旧版保存的低流速（如 3×、6×）提升为 8×，不是只修改首次安装默认值。在新版自行选择速度后会记录设置版本，之后重开尊重该选择，包括主动调低的速度；读取设置和测试不会改写个人偏好。已有谱面包无需转换或增加文件。
+公共操作：
 
-回归测试参数：`-chart <H3.grchart> -chartEditorSmoke -chartEditorNoteSpeedSmoke -chartEditorCapture <输出目录>`。报告为 `note-speed-checks.txt`，生成 1× / 3× / 8× 密集谱面截图，同一测试时刻在屏音符由 3× 的 75 个降为 8× 的 28 个。另在 3× / 8× / 16× 分别生成远端出生、接近、到达判定的三帧截图，并按真实播放时钟逐帧验证完整飞行，确认实际 LineRenderer 终点与音符首帧中心在世界坐标及视频百分比投影中重合。测试同时覆盖旧偏好升级与新版主动选择慢速后的保留，不改写源包或个人设置。**无视频谱面**的窗口缩放也在同一份报告里断言（推荐速度等于写入的 `approachSeconds`，速度翻倍时接近速度翻倍，判定锚点不动）：当前 71 项全部 PASS。游戏侧的同一条不变量由 `ChartImportValidation` 对曲库每一张谱面复验。
+- 点击或拖动时间尺移动播放头，同时显示分秒和拍点。
+- 放大时间轴后，把播放头或正在拖动的关键帧/音符移到左右边缘，可视范围会平滑横移；越靠近边缘速度越快。按住不动也会继续滚动，离开边缘或松手即停止，不会越过歌曲范围。正常播放到可视边缘时也会平滑跟随。
+- 鼠标在下半部分操作区时，**Ctrl+滚轮**以鼠标指向的时间为中心缩放，范围 1–64 倍，支持各界面缩放比例；在 3D 视图区不会触发。`+ / -` 以播放头为中心缩放，`Fit` 查看全部。底部横向滚动条平移可视范围；Shift+滚轮也可横向平移，普通滚轮上下浏览轨道。
+- `Snap` 循环切换 1 拍、1/2 拍、1/4 拍和关闭吸附。关闭时仍精确到谱面 tick。
+- 时间拖拽支持整次撤销/重做。相邻相机关键帧、布局边界和偏移关键点不会互相跨越或重叠；音符可以交换先后，仍保持各自 ID。
+- 当前波形来自程序实际播放的演示音频，标记为 DEMO AUDIO；这里没有假设已导入用户歌曲，也没有新增音频导入功能。
 
-如果拍线整体偏离歌曲，展开侧栏 **Timing / BPM** 校准：
+时间轴自检：在播放器自检参数中额外加 `-chartEditorTimelineSmoke`，会生成 `timeline-checks.txt` 和四个视图截图。截图测试需使用可见窗口。测试示例内容不会自动保存到用户谱面。
 
-1. **BPM** 修改播放头所在的现有 tempo 段，不自动检测音乐、不新增变速点；其他 tempo 段保留。
-2. **Audio ms** 表示谱面第 0 拍对应的音频文件时间。正数跳过音频开头，负数延后音频开始。修改时同步反向补偿视频 offset，保持既有音画相对同步。
-3. 点击 **Apply timing calibration** 才应用，可整次撤销。BPM 会改变已有 Note、Path 锚点和 Camera Z 关键帧对应的秒数，但不改它们的 tick、XY、Z。请先保存，再根据波形与节拍器试听校准。当前起步谱面仍保留原来的 180 BPM / 0 offset，并未宣称已自动识别正确首拍。
+## 编辑态播放辅助
 
-回归测试：构建后以 `-chart <H3.grchart> -chartEditorSmoke -chartEditorBeatSmoke -chartEditorCapture <输出目录>` 启动，生成 `beat-editing-checks.txt`、Notes/校准面板截图及仅用于测试的 round-trip 包。测试不改写传入谱面包。
+- 黄色 **NEW KEY POSITION** 固定在当前 **3D 视口中心**，与播放时间、Playhead 和已有相机节点无关。调整 UI 缩放、时间轴高度、切换 Caps 或手动转向后仍保持居中。
+- **已撤销黄球和编辑器视角的全部自动跟随**。编辑态播放、暂停、拖动时间轴、跨相机节点、重播以及修改已有相机节点，都不会自动平移或旋转观察视角，也不会把黄球移到节点/Playhead 附近。
+- 视角只响应手动环绕、平移、飞行和 F 聚焦。**Add Key at yellow marker** 使用中心黄球对应的世界坐标，不使用编辑相机本身的位置。
+- **紫色轨道**是当前时间的动态路径，稳定朝向编辑视角的紫色十字与 PLAYHEAD 标签标出当前判定横截面；在编辑态播放或拖动时间轴时更新。十字由两根独立细线绘制，不继承路线坐标架的细小旋转。原有绿色/选中黄色常驻路径，以及全部静止 Note 均保留不动。
+- 这些辅助只用于编辑模式；Preview 使用实际相机关键帧补间与音符流动，不显示紫色辅助线。
 
-## 视频坐标与文件包
+编辑播放自检参数：`-chartEditorPlaybackSmoke`，输出 `editing-playback-checks.txt` 和 `editing-live-playback.png`，覆盖边缘连续滚动、帧率/UI 缩放、暂停与撤销、变速及三种相机节点数据、静态对象保持、Preview 隔离。
 
-锚点采用视频左上角 `(0%, 0%)`、右下角 `(100%, 100%)`。窗口面板、时间轴、留黑均不计入。视口按整数像素的 16:9 画幅适配窗口和 UI 缩放，避免光栅取整改变百分比映射。
+## 预览
 
-每个锚点包含 `tick, xPercent, yPercent`，**在锚点自己的时间**落在指定视频位置。该时间先由 TempoMap 换算为秒，插值得到该时刻的**相机位姿**（轨道里程 + 机位 offset + 朝向 + FOV），再把百分比反投影到相机前方 7 单位的判定面，得到固定的世界点。其他时间该点随相机推进产生透视变化，而不是永远贴住屏幕。Note 在 1× 流速时固定在击打时间对应的世界点；倍率为 `r` 时，相机相对深度为 `7 + r × (里程(hitTime) - 里程(currentTime))`，在该深度采样原 Path。到击打时刻始终回到同一判定面与锚点，不叠加旧版非视频滚动公式。
+- 按 **F5** 或底部 **Preview**，从当前播放头自动播放；在歌曲结尾进入时从头开始。
+- 隐藏左侧编辑面板、舞台/相机辅助线、控制点、黄球和坐标轴，让场景占满窗口内的预览区域；不切换全屏。
+- 相机使用游戏的 `SpatialDirector.EvaluateCamera`；音符朝向使用 `SpatialDirector.NotePose`，显示路径、判定位置和地图。Tap 为蓝色、Drag 为绿色、保护音符为黄色，到达判定时间后自动消失。
+- **Space** 播放/暂停；**Restart** 从头播放。时间轴仍可拖动播放头、缩放和调整高度，但不能新增或修改关键帧和音符。
+- **Esc / F5 / Exit Preview** 返回编辑并暂停，恢复进入前的编辑相机位置、朝向和 FOV，保留预览结束的播放头位置。
+- 这是空间与时序的可视预览，不执行点击判定或评分。目前仍使用 DEMO AUDIO，没有新增外部歌曲导入功能。
+- **只有 Preview 中 Note 会流动**，并按接近/判定时间显示和消失；退出后恢复所有 Note 的静止编辑位置。
 
-因为相机的**位置和朝向都可以关键帧**，世界里的轨道会真的拐弯：每段锚点之间的位置由**里程**（而不是世界 Z）分段线性插值，所以相机转头超过 90°、世界 Z 不再递增时，轨道也不会折叠或错段。判定面中心和屏幕的 up 轴同样跟随机位，因此相机 roll 时 Note 与判定圈会跟着画面一起倾斜，而不是跟着世界倾斜。
+相机轨道包含世界坐标节点（Add Key 的默认格式）时，整条轨道使用固定端点补间：旧式 K0/route 节点先按各自拍点解析为固定世界位置，不再随当前播放时间漂移；位置保留缓入缓出，朝向使用连续四元数插值，接近垂直俯视时不会中途切换 up 轴。最后一个节点之后保持该节点姿态。FOV 与显式 Roll 仍插值。Camera 页会显示 `Fixed endpoints / smooth rotation`。
 
-`cameraZKeys` 现在只是**音符里程**（音符多快飞过来、判定面在第几米），`cameraPoseKeys` 只是**画面构图**（相机在哪、朝哪、多大焦距）。两者互不干扰：改机位不会改变音符到达时刻、出生远端、判定位置或谱面数据。
+这只修正已编排的玩家相机轨道，不会恢复黄球或编辑视角的自动跟随，也不需要重新保存或改写已有谱面。
 
-旧世界路线、相机和 offset 字段保留在文件中，不删除。旧视频谱面首次打开会初始化新的线性里程轨道、一条全 0 的机位轨道和默认百分比锚点；全 0 的机位轨道与旧版本逐位相同，不需要迁移。不会声称旧世界坐标能无损等价转换成新模型，需在统一视图中重新校准。无视频的历史谱面保留旧模式。
+工作区回归测试参数：`-chartEditorWorkspaceSmoke`，覆盖 Ctrl+滚轮事件、缩放锚点/边界、菜单输入隔离、文件另存/载入失败保护、预览相机与只读轨道、退出视角恢复，输出 `workspace-checks.txt` 和三个截图。文件测试仅写入指定自检目录的唯一子目录。
 
-已有 `videoSpace.schemaVersion=1` 的百分比谱面会迁移为版本 2：取旧 Scene 与每条 Path 的全部锚点时间并集，将当时的实际位置写入该 Path，然后清空旧 Scene 轨道。因旧曲线在 Z 上为分段线性相加，此过程保留整条曲线形状。原文件在打开时不会被重写，保存/导出才写入新格式。为避免裁掉原有画面外曲线，版本 2 允许小于 0 或大于 100 的有限百分比，表示视频边界以外；鼠标拖放仍限制在画面内。
+音符编辑态回归测试参数：`-chartEditorNoteSmoke`，覆盖全部工具页与播放头首/中/尾位置、变速和两种路径数据、静止路径、播放时不重建 Note、音符选择/聚焦、Preview 流动与判定位置一致、退出还原、改拍点和撤销；输出 `static-note-checks.txt` 及同一视角下首尾播放头截图。
 
-`.grchart` 仍是携带 `package.json`、`chart.json`、视频、音频和 BGA manifest 的便携 ZIP。新增数据直接存入 `chart.json`，不需要额外相机文件、白模或 Blender 工程：
+## 视角操作与 Caps Lock
 
-```json
-{
-  "videoSpace": {
-    "schemaVersion": 2,
-    "cameraZKeys": [
-      { "tick": 0, "z": 0, "easing": "linear" },
-      { "tick": 28800, "z": 100, "easing": "linear" }
-    ],
-    "cameraPoseKeys": [
-      { "tick": 0, "dx": 0, "dy": 0, "dz": 0, "yaw": 0, "pitch": 0, "roll": 0, "fov": 53, "easing": "linear" },
-      { "tick": 9600, "dx": 4, "dy": 1, "dz": 0, "yaw": 12, "pitch": -4, "roll": 0, "fov": 53, "easing": "smoother" },
-      { "tick": 28800, "dx": -3, "dy": 2, "dz": -8, "yaw": -8, "pitch": 0, "roll": 5, "fov": 45, "easing": "linear" }
-    ]
-  },
-  "paths": [{ "id": "p0", "screenAnchors": [
-    { "tick": 0, "xPercent": 34, "yPercent": 70 },
-    { "tick": 28800, "xPercent": 34, "yPercent": 70 }
-  ] }]
-}
-```
+- **Caps OFF**：右键拖动环绕视角，中键拖动平移，F 聚焦。空格播放/暂停。
+- **Caps ON**：切换为创造飞行模式。鼠标控制朝向，WASD 水平移动，空格上升，Ctrl 下降，Shift 加速。进入模式时鼠标在视图区会直接捕获，否则在视图区按右键开始飞行。
+- **Esc**：释放鼠标，以便操作左侧面板、Add Key 和时间轴；仍保持 Caps ON。再次在视图区按右键恢复飞行。失去窗口焦点也会释放鼠标。
+- 关闭 Caps 后回到环绕编辑，保持切换前的相机位置和朝向；舞台、相机和 Paths 页面共用同一套模式。
+- 视图区顶部持续显示 CAPS ON/OFF、当前模式及鼠标是否释放；相机预览期间暂停导航。
+- **已取消滚轮缩放**。滚轮只用于界面滚动，不再影响 3D 相机。远近移动用飞行，或 F 聚焦。
 
-上例仅展示新字段（480 ticks/拍、180 BPM、20 秒），不是独立完整谱面。读取程序必须支持 `videoSpace.schemaVersion=2` 并采用共享的 `VideoChartSpace` / `SpatialDirector`，不能将百分比误读成世界 XY。非递增 Z、非有限百分比、重复锚点时间及非 16:9 素材均拒绝。
+相机页的黄球只表示视口中心的放置点；播放和暂停使用同一规则，没有 Playhead/相机节点跟随。Camera 页按 F 可让中心放置点对准选中节点；点击 Add Key 保存显示的黄球位置。
 
-`cameraPoseKeys` 是**可选**的：整个数组缺失，或存在但每帧的 offset 与角度全为 0，都会得到与旧版本逐位一致的轴对齐相机。每个关键帧的 `dx/dy/dz` 是相对轨道直线的米数偏移，`yaw/pitch/roll` 是度，`fov` 省略（读回 0）时按 53° 处理，`easing` 与该段补间一致。校验要求时间递增、数值有限、`fov` 为 0 或落在 30–85；时间不要求覆盖全曲，范围外按首/末关键帧保持。为了让读取端不必猜，建议按上面的写法写出完整字段。
+例：在 Paths 的第 0 拍设置 X=-4、Y=0，第 16 拍设置 X=0、Y=4，第 32 拍设置 X=4、Y=0，即可得到沿场景主路线逐渐抬升再下降的 Note 路径。
 
-谱面仍为 JSON v1。新流程增加可选的 `videoBga` 和 `audioFile`；老的 `blenderBga` 字段仍可读取：
+## 数据兼容
 
-```json
-{
-  "sourceBlend": "BGA/blender/Firefly_the_Summer_Opening_v03.blend",
-  "packageManifest": "BGA/exports/Firefly_the_Summer_Opening_v03/manifest.json",
-  "sourceSha256": "...",
-  "timeOffsetSeconds": 0,
-  "enabled": true,
-  "followCamera": true
-}
-```
+谱面仍为 JSON v1。`stagePath` 和 `map` 是可选字段；游戏运行时仍可读取旧谱面的公式路线和固定地图。没有任何 `useWorldPose` 节点的旧式相机轨道保留原有动态路线求值；包含世界节点的轨道整体采用固定端点补间，混合类型节点各按自身时间解析。新捕获的关键帧仍使用 `useWorldPose`、`worldPosition`、`worldTarget` 保存精确的世界位置和注视点。
 
-旧谱面的 `sceneObjects`、`effectClips`、`cameraMotionClips` 会继续反序列化，但新工作流不再创建、编辑或播放这些内容。
+可选的 `paths[].offsetKeys` 保存 `{tick,x,y}`。tick 经过 TempoMap 换算为舞台距离（加判定面 NearDepth），沿该距离平滑插值，游戏与编辑器使用同一求值器。空轨道继续沿用原来的 section placement/bend/lift。首次编辑偏移时会以布局段和结尾的偏移初始化边界关键点；启用轨道后由关键点直接控制 XY，不再叠加旧的远端 bend/lift 或收缩。新增格式需要使用本次更新后的游戏源码构建游戏；此前已经打包的旧游戏不会识别新字段。
+
+Windows 程序及测试产物只放在被 Git 忽略的 `Builds/`，不会因为位于项目内就上传到 GitHub。
+
+当前版本是空间创作闭环 MVP，下一阶段适合补充音频文件浏览器、波形缓存、拍号/变速编辑、框选与批量 Note 操作，以及模块化地图 Prefab 库。
+
+## 场景、动效与运镜素材库
+
+工具栏现在按制作顺序提供 **Scene / Stage / Paths / Notes / Camera / Effects / Motion / Map**。Scene 是铺面起点：先搭建完整世界，再布置舞台路线与 Note 路径。三个视觉页面都使用同一种复用模型：内置素材只读；铺师将素材放入谱面后可修改实例，并可另存为个人素材、更新个人素材、删除个人素材，或通过 JSON 素材包导入/导出。实例保存完整参数，旧谱面不会因为本机素材库被修改或删除而损坏。
+
+### Scene
+
+- 内置 Architectural Block、Light Pillar、Floating Crystal、Kinetic Rotor、Media Screen、Rhythm Gateway。
+- Place selected asset 把物体放到当前视口中心标记，可编辑位置、旋转、缩放以及 none / float / rotate / pulse / pendulum 动画。
+- Import OBJ 支持 Wavefront OBJ，Import image 支持 PNG / JPG / JPEG，Import BGA video 支持 MP4 / WebM。视频平面由歌曲时间驱动，暂停和 Seek 后仍保持同步；导入结果都可保存到个人场景素材库。
+- 当前导入素材记录原文件路径；分享给其他电脑前必须同时携带原文件。发行资源收集器是后续独立步骤。
+
+### Effects
+
+- 内置 Flash、Bloom Pulse、Color Wash、Fog Dive、Light Sweep、Scene Pulse、Judgement Shockwave、Particle Burst、Speed Lines、Glitch Cut。
+- 在播放头添加后形成有持续时间的时间轴片段，可拖动改时间，并在左栏修改持续拍数、强度、频率和目标对象。
+- Target selected scene object 可把支持目标的效果绑定到 Scene 物体；没有指定对象时作用于整个场景或画面。
+
+### Motion
+
+- 运镜是基础 Camera 关键帧之上的非破坏性叠加层。内置 Impact Shake、Forward Punch、Roll Accent、Orbit Sweep、Dolly In-Out、FOV Pulse、Blank Custom Motion。
+- Motion 片段可拖动改时间、调整长度/强度/频率；F5 预览基础镜头与运镜叠加后的最终结果。
+- 每个片段都有归一化的自定义关键点，包含本地位移、Pitch/Yaw/Roll 和 FOV 偏移。铺师可在片段内播放头位置新增关键点，再保存或更新为个人运镜素材。
+- 运镜和所有物体动画都直接由歌曲时间求值，Seek、暂停、低帧率和重复预览保持确定性。
+
+个人素材库保存在 `Application.persistentDataPath/GeometryChartStudio/visual-library.json`。谱面新增可选字段 `sceneObjects`、`effectClips`、`cameraMotionClips`；旧 v1 JSON 无需迁移。
+
+视觉素材回归入口：`-chartEditorSmoke -chartEditorVisualSmoke -chartEditorCapture <目录>`。报告为 `visual-authoring-checks.txt`，并输出 Scene、Effects、Motion 三页截图。

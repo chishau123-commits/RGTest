@@ -17,7 +17,6 @@ namespace GeometryRhythm
         RectTransform page;
         CanvasGroup pageFade;
         PagedSongCarousel carousel;
-        Text speedValue;
         float pageStarted;
         Rect lastSafe;
         Vector2 lastCanvas;
@@ -98,10 +97,8 @@ namespace GeometryRhythm
                 var card=ActionButton(content,"Select song "+i,"",82+i*588,8,556,480,()=>owner.SelectSong(index),false,active?CyberTheme.PanelLight:CyberTheme.Panel);
                 var p=(RectTransform)card.transform;
                 Label(p,"Cover mark","G/R",26,20,450,52,30,true,CyberTheme.Cyan);
-                // A chart may ship its own cover; charts without one keep the procedural
-                // artwork. Adjacent albums reuse the style, the title always identifies them.
-                var art=songs[i].Cover;
-                if(art!=null) Cover(p,87,57,382,337,art);else Artwork(p,87,57,382,337);
+                // Adjacent albums reuse the style, but the title always identifies their real chart.
+                Artwork(p,87,57,382,337);
                 var cover=Label(p,"Cover title",songs[i].ShortTitle.ToUpperInvariant(),26,394,504,76,42,true,CyberTheme.Cyan,TextAnchor.MiddleCenter);Fit(cover,26,42);
             }
             var title=Label(page,"Selected title",entry.ShortTitle.ToUpperInvariant(),862,209,674,155,65,true);Fit(title,38,65);
@@ -109,14 +106,8 @@ namespace GeometryRhythm
             Box(page,"Detail accent",866,477,660,2,CyberTheme.Purple);
             Label(page,"Tempo",entry.Bpm+" BPM",866,508,310,67,40,true,CyberTheme.Cyan);
             Label(page,"Duration",FormatTime(entry.Duration),1234,508,292,67,40,true,CyberTheme.Text,TextAnchor.MiddleRight);
-            // Reading speed: a personal preference, written to the same stored value the
-            // pause sheet and the desktop chart editor use. The readout is the bare number.
-            Label(page,"Speed caption","SPEED",866,582,240,30,24,false,CyberTheme.Muted);
-            speedValue=Label(page,"Speed value",FormatSpeed(NoteScrollSettings.Load()),988,616,110,112,44,true,CyberTheme.Cyan,TextAnchor.MiddleCenter);
-            ActionButton(page,"Speed down","-",866,616,112,112,()=>{owner.ChangeNoteSpeed(-NoteScrollSettings.Step);RefreshSpeed();});
-            ActionButton(page,"Speed up","+",1108,616,112,112,()=>{owner.ChangeNoteSpeed(NoteScrollSettings.Step);RefreshSpeed();});
-            Label(page,"Notes",entry.Chart.notes.Length+" NOTES",1240,582,292,30,24,false,CyberTheme.Muted,TextAnchor.MiddleRight);
-            ActionButton(page,"Watch autoplay","PREVIEW",1240,616,292,112,()=>owner.Play(true));
+            Label(page,"Notes",entry.Chart.notes.Length+" NOTES",870,600,330,63,30,false,CyberTheme.Muted);
+            ActionButton(page,"Watch autoplay","PREVIEW",1200,582,332,116,()=>owner.Play(true));
             Label(page,"Page count",(selected+1)+" / "+songs.Count,257,686,350,52,30,true,CyberTheme.Text,TextAnchor.MiddleCenter);
             if(songs.Count>1)
             {
@@ -126,7 +117,7 @@ namespace GeometryRhythm
                 Label(page,"Swipe hint","SWIPE TO SELECT",220,759,422,55,28,false,CyberTheme.Muted,TextAnchor.MiddleCenter);
             }
             else Label(page,"Single song hint","FIRST COLLECTION",128,757,610,55,28,false,CyberTheme.Muted,TextAnchor.MiddleCenter);
-            ActionButton(page,"Play chart","PLAY  >",872,738,660,116,()=>owner.Play(false),true);
+            ActionButton(page,"Play chart","PLAY  >",872,726,660,122,()=>owner.Play(false),true);
         }
         public void ShowResults(SongEntry song,PlayResult result)
         {
@@ -173,8 +164,6 @@ namespace GeometryRhythm
             return true;
         }
         public PagedSongCarousel Carousel=>carousel;
-        /// <summary>QA read-back of the speed readout, so the self-test asserts what is shown.</summary>
-        public string SpeedText=>speedValue==null?null:speedValue.text;
         public void UseCaptureCamera(Camera camera)
         {
             canvas.renderMode=camera==null?RenderMode.ScreenSpaceOverlay:RenderMode.ScreenSpaceCamera;canvas.worldCamera=camera;canvas.planeDistance=.5f;
@@ -222,19 +211,6 @@ namespace GeometryRhythm
         static void Artwork(RectTransform parent,float x,float y,float width,float height)
         {
             Rect("Signal core / original vector album art",parent,x,y,width,height).gameObject.AddComponent<MenuArtwork>().raycastTarget=false;
-        }
-        void RefreshSpeed(){if(speedValue!=null)speedValue.text=FormatSpeed(NoteScrollSettings.Load());}
-        static string FormatSpeed(float value)=>value.ToString("0.##");
-        // Fill the card with the chart's own cover: centre-crop through uvRect instead of
-        // stretching, so a 16:9 or square cover keeps its proportions inside 382x337.
-        static void Cover(RectTransform parent,float x,float y,float width,float height,Texture2D texture)
-        {
-            var r=Rect("Chart cover",parent,x,y,width,height);
-            var image=r.gameObject.AddComponent<RawImage>();image.texture=texture;image.raycastTarget=false;
-            float textureAspect=(float)texture.width/texture.height,rectAspect=width/height;
-            if(textureAspect>rectAspect) {float scale=rectAspect/textureAspect;image.uvRect=new Rect((1-scale)*.5f,0,scale,1);}
-            else {float scale=textureAspect/rectAspect;image.uvRect=new Rect(0,(1-scale)*.5f,1,scale);}
-            Box(r,"Cover frame",0,0,width,3,CyberTheme.Alpha(CyberTheme.Cyan,.5f));
         }
 
         static string FormatTime(double time)=>((int)time/60).ToString("D2")+":"+((int)time%60).ToString("D2");
