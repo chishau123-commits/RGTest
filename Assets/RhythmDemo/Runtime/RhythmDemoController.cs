@@ -10,7 +10,7 @@ namespace GeometryRhythm
 {
     /// <summary>Composition root for the playable demo. JSON/clock/judgment are separate from
     /// views so the later chart editor can reuse evaluation without simulating a whole song.</summary>
-    public sealed class RhythmDemoController : MonoBehaviour
+    public sealed partial class RhythmDemoController : MonoBehaviour
     {
         [Header("JSON chart (empty = bundled demo)")]
         public TextAsset chartOverride;
@@ -85,7 +85,9 @@ namespace GeometryRhythm
         {
             // The existing demo scene is also the application entry point. Child sessions
             // opt out of this bootstrap; smoke mode keeps its direct gameplay entry.
-            if(showFrontend && Array.IndexOf(Environment.GetCommandLineArgs(),"-demoSmoke")<0)
+            // -demoBgaSmoke 同样要直进玩法：它测的是视频 BGA 这条通路，前端会接管画面与时钟。
+            var commandLine=Environment.GetCommandLineArgs();
+            if(showFrontend && Array.IndexOf(commandLine,"-demoSmoke")<0 && Array.IndexOf(commandLine,"-demoBgaSmoke")<0 && Array.IndexOf(commandLine,"-demoBgaClip")<0)
             {
                 gameObject.AddComponent<RhythmFrontend>().Configure(chartOverride,inputOffsetMilliseconds,musicVolume,gameTitle);
                 enabled=false;
@@ -100,6 +102,10 @@ namespace GeometryRhythm
             pulseBlock=new MaterialPropertyBlock();
             var args=Environment.GetCommandLineArgs();
             smoke=Array.IndexOf(args,"-demoSmoke")>=0;
+            // BGA 冒烟也要走 smoke 的路径：不读快捷键、不收集指针，时钟由探针自己控制
+            if(Array.IndexOf(args,"-demoBgaSmoke")>=0) smoke=true;
+            // 抓帧做动图也要直进玩法：它同样靠程序定位，不走前端
+            if(Array.IndexOf(args,"-demoBgaClip")>=0) smoke=true;
             string chartPath=Argument(args,"-demoChart");
             // A session that was handed a chart owns it: the frontend assigns one chart per
             // song, so the command-line file is only the fallback for the plain demo scene.
@@ -116,6 +122,7 @@ namespace GeometryRhythm
             QualitySettings.antiAliasing=4; // Keep the thin 3D rings and paths clean.
             Screen.sleepTimeout=SleepTimeout.NeverSleep;
             library=new VisualLibrary();
+            InitializePalette();
             RenderSettings.skybox=library.Sky;RenderSettings.fog=true;RenderSettings.fogMode=FogMode.Linear;
             RenderSettings.fogColor=new Color(.965f,.945f,.91f);RenderSettings.fogStartDistance=15;RenderSettings.fogEndDistance=125;
             RenderSettings.ambientMode=AmbientMode.Flat;RenderSettings.ambientLight=new Color(.72f,.715f,.70f);RenderSettings.ambientIntensity=1;
@@ -135,6 +142,7 @@ namespace GeometryRhythm
             var worldRoot=new GameObject("Abstract world / real meshes").transform;worldRoot.SetParent(transform,false);
             stage=new StageVisuals(worldRoot,library,Spatial);
             authoredVisuals=new AuthoredVisualDirector(worldRoot,Chart,tempo,Spatial,demoCamera);
+            LoadVideoBga(chartPath);
             notesRoot=new GameObject("Note pool").transform;notesRoot.SetParent(transform,false);
             pathRoot=new GameObject("3D paths").transform;pathRoot.SetParent(transform,false);
             foreach(var path in Chart.paths) paths.Add(path.id,new PathVisual(path.id,pathRoot,library));
@@ -169,7 +177,9 @@ namespace GeometryRhythm
             Engine.OnJudged=OnJudged;
             clock.Seek(0,startInMenu);Ready=true;
             if(startInMenu) SetMenuMode(true);
-            if(smoke) StartCoroutine(SmokeCapture(args));
+            if(Array.IndexOf(args,"-demoBgaClip")>=0) StartCoroutine(RunBgaClip(args));
+            else if(Array.IndexOf(args,"-demoBgaSmoke")>=0) StartCoroutine(RunBgaSmoke(args));
+            else if(smoke) StartCoroutine(SmokeCapture(args));
         }
         void Update()
         {
@@ -182,12 +192,14 @@ namespace GeometryRhythm
                 // The menu shows the world without advancing the chart: keep the authored
                 // backdrops in sync with the preview time, and keep the 16:9 playfield lock.
                 authoredVisuals?.EvaluateBackdrops(preview);
+                UpdateVideoBga(preview,false);
                 ApplyPlayfieldViewport();
                 return;
             }
             if(!smoke) ReadShortcuts();
             double time=clock.Time;
             EvaluateVisuals(time);
+            UpdateVideoBga(time,!clock.Paused);
             if(!clock.Paused && !smoke)
             {
                 // A click/held finger used to start or resume must not hit an anywhere Note.
@@ -308,6 +320,7 @@ namespace GeometryRhythm
         public void EvaluateVisuals(double time)
         {
             visualTime=time;
+            ApplyPalette(time);
             Spatial.EvaluateCamera(demoCamera,time);
             if (!VideoChartSpace.Enabled(Chart)) CameraMotionEvaluator.Apply(Chart,tempo,demoCamera,time);
             ApplyPlayfieldViewport();
@@ -335,6 +348,10 @@ namespace GeometryRhythm
         void OnJudged(RuntimeNote note,NoteResult result)
         {
             hud.Judge(result,clock.Time);
+            // 判定驱动的特效（effectClips 里 target=="judgement"）在这里拿到触发时刻。
+            // 注意要在 Miss 提前返回之前调用，否则漏掉的音符永远触发不了任何东西——
+            // 而「漏掉时画面有反应」正是 BMS poor_events 那个先例的核心。
+            authoredVisuals?.NotifyJudgement(result,clock.Time);
             if(result==NoteResult.Miss) return;
             foreach(var pulse in pulses)
             {
@@ -383,6 +400,7 @@ namespace GeometryRhythm
         {
             if(source!=null) { source.Stop();if(ownsAudio && source.clip!=null) Destroy(source.clip); }
             authoredVisuals?.Dispose();
+            DisposeVideoBga();
             library?.Dispose();
         }
         void OnGUI()

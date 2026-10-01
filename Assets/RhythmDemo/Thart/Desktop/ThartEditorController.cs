@@ -182,6 +182,7 @@ namespace GeometryRhythm.Thart.Editor
             AutoLoadLastSong();
             SetupPreview();
             LoadCommandLineRecording();
+            LoadCommandLineVideoBga();
             UpdateStatus("Thart 编辑器已启动");
         }
 
@@ -314,12 +315,14 @@ namespace GeometryRhythm.Thart.Editor
 
             // 3D 预览（摄像机 / 音符位置）
             UpdatePreview();
+            UpdateVideoBga();
         }
 
         void OnDestroy()
         {
             server?.Dispose();
             DestroyPreview();
+            DisposeVideoBga();
         }
 
         #endregion

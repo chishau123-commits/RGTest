@@ -38,6 +38,9 @@ namespace GeometryRhythm
         public SceneObjectData[] sceneObjects;
         public EffectClipData[] effectClips;
         public CameraMotionClipData[] cameraMotionClips;
+        // Note 与反馈层的配色权威：离线从 BGA 视频烘焙（Tools/Bga/bake_bga_palette.py）。
+        // 没有这个字段时，SceneVisuals 的硬编码默认色仍然生效，所以每张旧谱面都不受影响。
+        public PaletteKeyData[] paletteKeys;
     }
     [Serializable] public sealed class VideoBgaData
     {
@@ -181,11 +184,27 @@ namespace GeometryRhythm
         public string kind = "flash";
         // screen, scene, judgement or a SceneObjectData id
         public string target = "screen";
+        // target=="judgement" 时：只有这个判定档触发。留空表示任何判定都触发。
+        // 这是 BMS 的 poor_events 在运行时的对应物——漏掉的音符可以有自己的画面。
+        // 此时 startTick 被忽略，durationTicks 变成「命中后持续多久」的包络长度。
+        public string result = "";
         public Color color = Color.white;
         public float intensity = 1;
         public float frequency = 1;
         public int seed;
         public string easing = "smooth";
+    }
+
+    /// <summary>
+    /// 一个色板键：从 BGA 视频离线烘焙出来的三个颜色。
+    /// glow 是视频自己的平均色（只驱动氛围量），tap/drag 是派生出的、保证可读的 Note 主色。
+    /// </summary>
+    [Serializable] public sealed class PaletteKeyData
+    {
+        public int tick;
+        public Color tap = Color.white;
+        public Color drag = Color.white;
+        public Color glow = Color.white;
     }
 
     [Serializable] public sealed class CameraMotionKeyData

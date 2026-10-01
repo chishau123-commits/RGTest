@@ -128,6 +128,21 @@ namespace GeometryRhythm
             lastRequested = -1;
         }
 
+        /// <summary>
+        /// 以「贴图」方式呈现：保持 APIOnly，由宿主自己把 <see cref="Texture"/> 画出来。
+        /// 制谱器（Thart）的主视图是整屏 IMGUI 且先铺一层不透明 backdrop，
+        /// 远平面视频会被那层盖住，所以它必须走这条路；游玩端有真实世界相机，用 Activate 即可。
+        /// </summary>
+        public void ActivateAsTexture()
+        {
+            active = true;
+            player.renderMode = VideoRenderMode.APIOnly;
+            lastRequested = -1;
+        }
+
+        /// <summary>是否已经准备好向画面输出（无论走远平面还是贴图）。</summary>
+        public bool IsActive => active;
+
         public void Evaluate(double seconds, bool playing)
         {
             if (!IsLoaded || !active) return;

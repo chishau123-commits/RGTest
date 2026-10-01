@@ -26,6 +26,8 @@ namespace GeometryRhythm.Thart
         public const string TouchEntry = "touch.json";
         public const string MetaEntry = "meta.json";
         public const string AudioDir = "audio/";
+        public const string BgaDir = "bga/";
+        public const string BgaManifestEntry = BgaDir + "manifest.json";
 
         [Serializable]
         public sealed class Meta
@@ -38,6 +40,8 @@ namespace GeometryRhythm.Thart
             public bool hasTouch;
             public bool hasAudio;
             public string audioName = "";
+            public bool hasBga;
+            public string bgaManifest = "";
         }
 
         public sealed class Content
@@ -47,15 +51,18 @@ namespace GeometryRhythm.Thart
             public byte[] AudioBytes;
             public string AudioName = "";
             public Meta Info;
+            /// <summary>包内 bga/ 下的文件，键是完整条目名（如 bga/video.mp4）。没有 BGA 时为 null。</summary>
+            public Dictionary<string, byte[]> BgaEntries;
         }
 
         public static void Save(string path, ChartData chart, ThartTouchRecording touch,
-            byte[] audioBytes, string audioName, string title)
+            byte[] audioBytes, string audioName, string title, IList<ThartZip.Entry> bgaEntries = null)
         {
             if (chart == null) throw new ArgumentNullException("chart");
 
             bool hasAudio = audioBytes != null && audioBytes.Length > 0;
             string safeAudioName = hasAudio ? SanitizeFileName(audioName) : "";
+            bool hasBga = bgaEntries != null && bgaEntries.Count > 0;
 
             var meta = new Meta
             {
@@ -66,7 +73,9 @@ namespace GeometryRhythm.Thart
                 created = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                 hasTouch = touch != null,
                 hasAudio = hasAudio,
-                audioName = safeAudioName
+                audioName = safeAudioName,
+                hasBga = hasBga,
+                bgaManifest = hasBga ? BgaManifestEntry : ""
             };
 
             var entries = new List<ThartZip.Entry>
@@ -80,6 +89,12 @@ namespace GeometryRhythm.Thart
 
             if (hasAudio)
                 entries.Add(new ThartZip.Entry(AudioDir + safeAudioName, audioBytes));
+
+            // BGA 走和音频一样的路子：整包进 zip。ThartZip 是 store-only（不压缩），
+            // 所以这里不会为了压缩再拖一份内存，但视频本身仍然要整个读进 byte[]——
+            // 1080p60 两分钟约 107 MB。增量保存是以后的事，现在先保证包自洽。
+            if (hasBga)
+                foreach (var entry in bgaEntries) entries.Add(entry);
 
             ThartZip.Write(path, entries);
         }
@@ -128,6 +143,14 @@ namespace GeometryRhythm.Thart
             {
                 try { content.Info = JsonUtility.FromJson<Meta>(Utf8Decode(metaBytes)); }
                 catch { }
+            }
+
+            foreach (var kv in raw)
+            {
+                if (!kv.Key.StartsWith(BgaDir, StringComparison.OrdinalIgnoreCase)) continue;
+                if (kv.Value == null || kv.Value.Length == 0) continue;
+                if (content.BgaEntries == null) content.BgaEntries = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+                content.BgaEntries[kv.Key] = kv.Value;
             }
 
             if (content.AudioBytes != null && string.IsNullOrEmpty(content.AudioName))

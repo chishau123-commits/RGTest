@@ -74,6 +74,25 @@ namespace GeometryRhythm
             Stone = Lit(new Color(.76f,.745f,.72f));
             Sky = Own(new Material(Shader.Find("GeometryRhythm/Sky")));
         }
+        /// <summary>路径线的基准色。色板只允许把它往视频色偏一半；每帧在上一帧结果上再偏会漂。</summary>
+        readonly Color lineBase = new Color(.62f,.73f,.79f);
+
+        /// <summary>
+        /// 色板权威：驱动全部 Note 与反馈层的颜色。没人调用过就保持构造时的硬编码默认值，
+        /// 所以没有 paletteKeys 的谱面行为完全不变。
+        /// </summary>
+        public void ApplyPalette(Color tap, Color drag, Color glow)
+        {
+            Tap.color = tap;
+            Drag.color = drag;
+            // 保护壳跟着主色走，只保留各自的透明度。
+            TapShell.color = new Color(tap.r, tap.g, tap.b, .13f);
+            DragShell.color = new Color(drag.r, drag.g, drag.b, .28f);
+            // glow 是「氛围量」：路径线允许被它带偏，但只带一半，保住原本的灰蓝调。
+            Line.color = Color.Lerp(lineBase, glow, .5f);
+            // Border / Marker 是保证轮廓可读的深色，刻意不参与色板。
+        }
+
         T Own<T>(T value) where T : UnityEngine.Object { owned.Add(value); return value; }
         Material Flat(Color color) { var m = Own(new Material(Shader.Find("GeometryRhythm/Flat"))); m.color = color; return m; }
         Material Note(Color color) { var m = Own(new Material(Shader.Find("GeometryRhythm/Note"))); m.color = color; return m; }

@@ -129,6 +129,31 @@ namespace GeometryRhythm
         readonly bool originalFogEnabled;
         readonly CameraClearFlags originalClearFlags;
         int backdrops;
+        // target=="judgement" 的挂点：每一档判定最后一次发生的时刻，索引直接用 NoteResult 的值。
+        readonly double[] lastJudgementSeconds = { -999, -999, -999, -999, -999 };
+        /// <summary>最近一次 Evaluate 里判定驱动特效的强度（0 表示没在响）。给自检用。</summary>
+        public float LastJudgementEffectAlpha { get; private set; }
+
+        /// <summary>判定回调：记下这一档最后一次命中的时刻。Pending/Skipped 不是成绩，忽略。</summary>
+        public void NotifyJudgement(NoteResult result, double seconds)
+        {
+            if (result != NoteResult.Perfect && result != NoteResult.Good && result != NoteResult.Miss) return;
+            lastJudgementSeconds[(int)result] = seconds;
+        }
+
+        double SecondsSinceJudgement(double seconds, string filter)
+        {
+            if (string.IsNullOrEmpty(filter))
+            {
+                double latest = Math.Max(lastJudgementSeconds[(int)NoteResult.Perfect],
+                    Math.Max(lastJudgementSeconds[(int)NoteResult.Good], lastJudgementSeconds[(int)NoteResult.Miss]));
+                return seconds - latest;
+            }
+            if (filter == "perfect") return seconds - lastJudgementSeconds[(int)NoteResult.Perfect];
+            if (filter == "good") return seconds - lastJudgementSeconds[(int)NoteResult.Good];
+            if (filter == "miss") return seconds - lastJudgementSeconds[(int)NoteResult.Miss];
+            return -1;
+        }
         readonly Light effectLight;
         readonly Transform overlay;
         readonly Material overlayMaterial;
@@ -305,14 +330,31 @@ namespace GeometryRhythm
             RenderSettings.fogEndDistance = originalFogEnd; RenderSettings.ambientLight = originalAmbient;
             effectLight.enabled = false; sceneRoot.localScale = Vector3.one;
             Color overlayColor = Color.clear;
+            float judgementAlpha = 0;
             foreach (var effect in effects)
             {
                 var d = effect.data;
-                bool active = d.durationTicks > 0 && tick >= d.startTick && tick <= d.startTick + d.durationTicks;
+                float q;
+                bool active;
+                if (d.target == "judgement")
+                {
+                    // 判定驱动：忽略 startTick，改看「这一档判定最后一次发生在多久以前」；
+                    // 持续长度沿用 durationTicks，换算成秒。durationTicks<=0 视为不启用。
+                    double since = SecondsSinceJudgement(seconds, d.result);
+                    // 时长：tempo 从 0 起算时 SecondsAtBeat 的差值就是秒数（多 tempo 谱面见文档说明）。
+                    double window = Math.Max(.02, tempo.SecondsAtBeat(d.durationTicks / (double)chart.ticksPerBeat));
+                    active = d.durationTicks > 0 && since >= 0 && since <= window;
+                    q = active ? Mathf.Clamp01((float)(since / window)) : 0;
+                }
+                else
+                {
+                    active = d.durationTicks > 0 && tick >= d.startTick && tick <= d.startTick + d.durationTicks;
+                    q = Mathf.Clamp01((tick - d.startTick) / d.durationTicks);
+                }
                 effect.root.gameObject.SetActive(active); if (!active) continue;
-                float q = Mathf.Clamp01((tick - d.startTick) / d.durationTicks);
                 float envelope = d.easing == "linear" ? 1 : d.easing == "impact" ? Mathf.Exp(-6 * q) : Mathf.Sin(q * Mathf.PI);
                 float amount = Mathf.Max(0, d.intensity) * envelope;
+                if (d.target == "judgement") judgementAlpha = Mathf.Max(judgementAlpha, amount);
                 if (d.kind == "flash" || d.kind == "color" || d.kind == "glitch")
                 {
                     float flicker = d.kind == "glitch" ? (.35f + .65f * Mathf.Abs(Mathf.Sin(q * 91 + d.seed))) : 1;
@@ -345,6 +387,7 @@ namespace GeometryRhythm
                     }
                 }
             }
+            LastJudgementEffectAlpha = judgementAlpha;
             overlay.gameObject.SetActive(overlayColor.a > .002f);
             if (overlay.gameObject.activeSelf)
             {

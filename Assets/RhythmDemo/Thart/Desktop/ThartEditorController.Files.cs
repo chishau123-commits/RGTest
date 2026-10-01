@@ -28,6 +28,8 @@ namespace GeometryRhythm.Thart.Editor
             PushUndo();
 
             LoadOrCreateChart();
+            DisposeVideoBga();
+            bgaSourceDirectory = null;
 
             currentRecording = null;
             convertedNotes.Clear();
@@ -101,9 +103,25 @@ namespace GeometryRhythm.Thart.Editor
                     StartCoroutine(LoadPackageAudioRoutine(content.AudioBytes, content.AudioName));
                 }
 
+                // 包内有 BGA 槽位就展开再绑定；老包没有就卸载，免得画面里还留着上一张谱面的背景。
+                // 谱面若把 BGA 记成包外路径（早期手工写的绝对路径），也在这里兜一下。
+                bool hasBga = content.BgaEntries != null && content.BgaEntries.Count > 0;
+                if (hasBga)
+                {
+                    MaterializeBgaFromPackage(content.BgaEntries);
+                }
+                else
+                {
+                    DisposeVideoBga();
+                    bgaSourceDirectory = null;
+                    string external = ChartVideoBgaManifest();
+                    if (!string.IsNullOrEmpty(external)) StartCoroutine(BindVideoBga(external));
+                }
+
                 UpdateStatus("已打开: " + Path.GetFileName(path)
                     + (content.AudioBytes != null ? "（含音频）" : "")
-                    + (content.Touch != null ? "（含触控）" : ""));
+                    + (content.Touch != null ? "（含触控）" : "")
+                    + (hasBga ? "（含BGA）" : ""));
             }
             catch (Exception e)
             {
@@ -179,11 +197,13 @@ namespace GeometryRhythm.Thart.Editor
             try
             {
                 string title = string.IsNullOrEmpty(chart.title) ? "Thart Chart" : chart.title;
-                ThartPackage.Save(path, chart, currentRecording, audioRawBytes, audioFileName, title);
+                var bga = CollectBgaEntries();
+                ThartPackage.Save(path, chart, currentRecording, audioRawBytes, audioFileName, title, bga);
                 chartFilePath = path;
                 UpdateStatus("已保存: " + Path.GetFileName(path)
                     + "（" + (currentRecording != null ? "含触控 " : "")
                     + (audioRawBytes != null && audioRawBytes.Length > 0 ? "含音频" : "无音频")
+                    + (bga != null ? " 含BGA" : "")
                     + "）");
             }
             catch (Exception e)

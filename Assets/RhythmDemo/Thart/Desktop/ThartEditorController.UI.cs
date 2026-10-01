@@ -769,6 +769,10 @@ namespace GeometryRhythm.Thart.Editor
             }
 
             Styles.DrawCard(view);
+            // 视频 BGA 垫在编辑面板之下、卡片之上。Thart 的 OnGUI 会先整屏铺一层不透明
+            // backdrop，远平面视频会被它盖掉，所以 BGA 以贴图模式画在这里。预览模式不画
+            // ——那一格里要留给 3D 预览。
+            DrawVideoBga(GetMainViewFieldLogicalRect());
             GUILayout.BeginArea(new Rect(view.x + 16, view.y + 14, view.width - 32, view.height - 28));
 
             if (mode == ThartEditorMode.Recording) DrawRecordingView(view.width - 32, view.height - 28);
