@@ -1,0 +1,254 @@
+{
+  "buildUtc": "2026-10-03T10:34:01.4947724Z",
+  "unityVersion": "2022.3.62f3c1",
+  "apk": "Builds/Android/RingGame-debug.apk",
+  "apkBytes": 76389254,
+  "apkSha256": "a7714e718932257c517a8f8926c66eb2032d8388f67e726856da3869f0a09fff",
+  "buildResult": "Succeeded",
+  "errors": 0,
+  "warnings": 0,
+  "sourceComparison": "Byte-for-byte matching Assets (including meta), package locks and editor version between review source and Android build project. ProjectSettings are configured by BuildCommands before building; machine-local settings are excluded.",
+  "files": [
+    {
+      "path": "Assets/RingGame.meta",
+      "sha256": "69fd8d368a7d731926301a85fd3bbb6e8eee76e0d99b1c03b5a662ecf4747dde"
+    },
+    {
+      "path": "Assets/RingGame/Core.meta",
+      "sha256": "4a3a36b116f89123230eee3f49d68f8e01ad4bad1b80f08df83093319d1c22e6"
+    },
+    {
+      "path": "Assets/RingGame/Core/ChartCompiler.cs",
+      "sha256": "3b4eac9533a09a4686b04e253b540e6a88ada6f1e7d97cb2bd4391fc1e31e984"
+    },
+    {
+      "path": "Assets/RingGame/Core/ChartCompiler.cs.meta",
+      "sha256": "98f2b8a1e4107b3f634ad19bf0cbde5d19c376c15762d4494f8a814af96a356a"
+    },
+    {
+      "path": "Assets/RingGame/Core/ChartData.cs",
+      "sha256": "563a271d664ebc8c0bdd3edb2ea81cec396c04b4bc563a722ce508d3f3764bf4"
+    },
+    {
+      "path": "Assets/RingGame/Core/ChartData.cs.meta",
+      "sha256": "3a2d825c064d7362b91b31e8cec1d25228f073bca26bfb5965694c9f85060e0e"
+    },
+    {
+      "path": "Assets/RingGame/Core/ChartJson.cs",
+      "sha256": "175ab556458478a00f72df437965c8059d46675908a9451523221762670b129a"
+    },
+    {
+      "path": "Assets/RingGame/Core/ChartJson.cs.meta",
+      "sha256": "74b5a269d285525ef346fc33125dee5d5db5d9edf779275861a42acb187a1025"
+    },
+    {
+      "path": "Assets/RingGame/Core/Evaluators.cs",
+      "sha256": "7b4d2801ed532b25527d59d9160eab00be7a80fa816a5d4f5e50469dd068fac9"
+    },
+    {
+      "path": "Assets/RingGame/Core/Evaluators.cs.meta",
+      "sha256": "cc6e2e88c603992baa88870a7f116b576e45d333df4499061fe0888109616ab1"
+    },
+    {
+      "path": "Assets/RingGame/Core/JudgeEngine.cs",
+      "sha256": "0fca60a20c1b566f19e53ff1aa25389f843dacb8158cdf06cf03f0db0c2a5459"
+    },
+    {
+      "path": "Assets/RingGame/Core/JudgeEngine.cs.meta",
+      "sha256": "ab899655b162d7ae4098adf953c3287cce57e6f323b8c4b2b0614898359a574e"
+    },
+    {
+      "path": "Assets/RingGame/Core/RingGame.Core.asmdef",
+      "sha256": "c20ebeb8c03ae10cad7168949652d0b852a45219b300d59f26fa623c6e7260ff"
+    },
+    {
+      "path": "Assets/RingGame/Core/RingGame.Core.asmdef.meta",
+      "sha256": "7b802dfd7f6ebc0975df0e001a13c7275b988ab4f21ad6a4fa9cfae66d2ee676"
+    },
+    {
+      "path": "Assets/RingGame/Editor.meta",
+      "sha256": "cbed6d7d4cfa02f96531e139f3f154cef215749efc50eb8e012d2825de627a61"
+    },
+    {
+      "path": "Assets/RingGame/Editor/BuildCommands.cs",
+      "sha256": "50c452aa5bbfa6ba1d45e57a091fdc767dd2b78dfff7d291237e11996742b4fa"
+    },
+    {
+      "path": "Assets/RingGame/Editor/BuildCommands.cs.meta",
+      "sha256": "48bd99d407f9ea74e0f75323fe2474c7ca64cfbba7992d9cbe6245e6ece94c66"
+    },
+    {
+      "path": "Assets/RingGame/Editor/PreviewCommands.cs",
+      "sha256": "84879199d1edcf9918a1aceaacc953547b677035d9418c2cd62eb211143d58d9"
+    },
+    {
+      "path": "Assets/RingGame/Editor/PreviewCommands.cs.meta",
+      "sha256": "cb17b3522fa618c346f3fc84b545ee2b0bc2a5997771ab878633cbfe2f3c55a8"
+    },
+    {
+      "path": "Assets/RingGame/Editor/RingGame.Editor.asmdef",
+      "sha256": "2ae1bd247d47c0321e52ae68dcf6e0e696ebd8fae37b278b3cc7f2612a299460"
+    },
+    {
+      "path": "Assets/RingGame/Editor/RingGame.Editor.asmdef.meta",
+      "sha256": "1c5b47bd6dabfcf7149c4f23685a5eacc9d170cec0c0794de115633f4c0338b4"
+    },
+    {
+      "path": "Assets/RingGame/Editor/TestCommands.cs",
+      "sha256": "4af7a64b0281d9e7e35aa07f49a1777d6e39ca088bc6d29015165f62a3912323"
+    },
+    {
+      "path": "Assets/RingGame/Editor/TestCommands.cs.meta",
+      "sha256": "853c859373703ad21630667e33483d2d602d9cc195641bcb957f76ecb187fae5"
+    },
+    {
+      "path": "Assets/RingGame/Resources.meta",
+      "sha256": "4115bd81ac273d982b7df2fc03f0c73fdc5479465d4b9b1b8f7cd69f938de2ea"
+    },
+    {
+      "path": "Assets/RingGame/Resources/Audio.meta",
+      "sha256": "efdbc051c284ba54458d09ee3f61ae9a189dddf08565c1e59d312ef4bd078e91"
+    },
+    {
+      "path": "Assets/RingGame/Resources/Audio/metronome.wav",
+      "sha256": "c692b74c6a9746bfcfa51a748a23d66ff03cbd9ff4dd8b5fc9d67d5865c09438"
+    },
+    {
+      "path": "Assets/RingGame/Resources/Audio/metronome.wav.meta",
+      "sha256": "e7bd496f42358736c90711ed4b28e884553c06b46e7e703275548fc9be26b3fe"
+    },
+    {
+      "path": "Assets/RingGame/Resources/Charts.meta",
+      "sha256": "3aaf4148ece9894321fb008d22c818fbfc9fa070585e27bbd2e1c4cda9669143"
+    },
+    {
+      "path": "Assets/RingGame/Resources/Charts/prototype.json",
+      "sha256": "f24f35fb33b59ec9470916a203dfad36f2709591275cb199068b886fafe620ed"
+    },
+    {
+      "path": "Assets/RingGame/Resources/Charts/prototype.json.meta",
+      "sha256": "9ae66a809564ae7fd7789bb1678380e124c93f58eae4b003eb5048d2b3a13ab8"
+    },
+    {
+      "path": "Assets/RingGame/Runtime.meta",
+      "sha256": "c8949cfcc8edfb4aa7852047862cd1be7aa38d4f5630a0e2c4af2116896e88f8"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/DiagnosticLog.cs",
+      "sha256": "4abc9a5a75633eac602cb945cb5f3fc28a5ade074870565991112044181584be"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/DiagnosticLog.cs.meta",
+      "sha256": "2e2fbb9a4d4a3129b2e10296a0da6e4a4c8f4a740eb1167620e0632a3eedde4a"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/GameBootstrap.cs",
+      "sha256": "0cdb7e3ab9e76ff956154149cbcfbe330ed5a28d14859fc52437c165a7142c5d"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/GameBootstrap.cs.meta",
+      "sha256": "1d21819c36cbe51f2797cacd631df1bf9b74e008db61601c9fad82222cf8830c"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/GameViews.cs",
+      "sha256": "0b7a292d227aed01dbbbc109cfd07cb2f9954c17306d2ee6ca0bd8e730f1591f"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/GameViews.cs.meta",
+      "sha256": "be7e7294de0e60d70dcdc2e09af96b89105268e7719d6e78dd551641136f1e11"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/InputTiming.cs",
+      "sha256": "73254b3e69fa1aa321f4c15314d6360363c7378a76f065a834e23754e78d32bd"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/InputTiming.cs.meta",
+      "sha256": "02e6f523a46d972e8f527406da6564063288681d5fc4d1c5998229b2383f1e72"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/PoseHistory.cs",
+      "sha256": "e9398b023e9bab7a9290a8a049f2813a7d293e3eaeaa6e249fba4c1e40393d67"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/PoseHistory.cs.meta",
+      "sha256": "3c3364700279694aa626783965d948021755fe238dfd79e16777d54f1ed3d17a"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/RingGame.Runtime.asmdef",
+      "sha256": "43817cb18487d88d410c303a5e93a21c2272741083be8411829c06911004d734"
+    },
+    {
+      "path": "Assets/RingGame/Runtime/RingGame.Runtime.asmdef.meta",
+      "sha256": "a7971708afef1ebcf57c068c2c29fcc76b5b9b84899a15c9480d21487da032f2"
+    },
+    {
+      "path": "Assets/RingGame/Scenes.meta",
+      "sha256": "189d38560121de2ed1c575d0a31249750032566e12987a7dc6ae998c95760abe"
+    },
+    {
+      "path": "Assets/RingGame/Scenes/Game.unity",
+      "sha256": "d51785c13903c89912a4e364ef7173c6caa54f34ef83487370a6b3bf2912bcd6"
+    },
+    {
+      "path": "Assets/RingGame/Scenes/Game.unity.meta",
+      "sha256": "43c21e78456a9806e51c9508c4ceeb8b85681c94456b2d6d2c552fbf2f53a169"
+    },
+    {
+      "path": "Assets/RingGame/Tests.meta",
+      "sha256": "611e338af5399dc148ef59e0b2fc574b3e69403c0cbfbf076a8e4204027055a8"
+    },
+    {
+      "path": "Assets/RingGame/Tests/EditMode.meta",
+      "sha256": "1eee11c54b88c4d735e0bc9a31af662c8f1d19626ea3de4fee7d2f7cd9a9d8dc"
+    },
+    {
+      "path": "Assets/RingGame/Tests/EditMode/CoreTests.cs",
+      "sha256": "7775a817d62932f88a35e22419367a9119ea2abaef7e06d28350b8902cb01320"
+    },
+    {
+      "path": "Assets/RingGame/Tests/EditMode/CoreTests.cs.meta",
+      "sha256": "5bb146d45f1724a7eb754f0364b0a24f724b11d5af119dd7c6cb2ee797e73f31"
+    },
+    {
+      "path": "Assets/RingGame/Tests/EditMode/RingGame.Tests.Editor.asmdef",
+      "sha256": "d31f0a0bcbb5c1c65d1003f8b1a82bfb811469cc7a1bbc57321a84f767cf3a77"
+    },
+    {
+      "path": "Assets/RingGame/Tests/EditMode/RingGame.Tests.Editor.asmdef.meta",
+      "sha256": "b673708260678d727c6422abb96dd08e5ceae0f75db687d81aecb57fbac2eb16"
+    },
+    {
+      "path": "Assets/RingGame/Tests/EditMode/TimingTests.cs",
+      "sha256": "802c15f475a15033aab1d7df96c93aa9218259edcd4ae6ca0c736c75dd89e98f"
+    },
+    {
+      "path": "Assets/RingGame/Tests/EditMode/TimingTests.cs.meta",
+      "sha256": "f2c436f5fa061c45090c474dea42b433b8d6ee4067dad4b3772c61037437817c"
+    },
+    {
+      "path": "Packages/manifest.json",
+      "sha256": "a51f4cb380fb81a19b343eb47aa682cd16e139981c0619ffa467e19527c3eefe"
+    },
+    {
+      "path": "Packages/packages-lock.json",
+      "sha256": "cc990b20d4dd1796164da629d9129288b32f5880c77bcecae5b066f2c813c28a"
+    },
+    {
+      "path": "ProjectSettings/ProjectVersion.txt",
+      "sha256": "b42279cfd794d9f1825f3b7c1f318b861fa9e2e2b3c6c146737bdbd41c01b389"
+    }
+  ],
+  "editModeXmlSha256": "f263f7936786042f744f4b5652a186f1f147ba1b54d3575e2c13cf807707d578",
+  "unityScreenshotSha256": "615e51dc42a6c85f5a2715c748f2ee17a10e3b0c629a8ec1486e796f34f10f99",
+  "apkInspection": {
+    "tool": "Android SDK build-tools 34.0.0 aapt dump badging",
+    "applicationId": "com.chishau.ringgame.prototype",
+    "minSdk": 26,
+    "targetSdk": 35,
+    "abi": "arm64-v8a",
+    "debuggable": true,
+    "gles": "3.0",
+    "orientation": "landscape"
+  },
+  "physicalDeviceAcceptance": "Pending; user paused device debugging before installation/launch acceptance."
+}

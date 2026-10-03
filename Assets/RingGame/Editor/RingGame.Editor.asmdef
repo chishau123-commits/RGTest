@@ -1,0 +1,9 @@
+{
+  "name": "RingGame.Editor",
+  "rootNamespace": "RingGame.Editor",
+  "references": ["RingGame.Runtime", "UnityEditor.TestRunner", "UnityEngine.TestRunner"],
+  "includePlatforms": ["Editor"],
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll"],
+  "autoReferenced": true
+}

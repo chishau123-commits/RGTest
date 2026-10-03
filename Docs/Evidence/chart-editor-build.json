@@ -1,0 +1,211 @@
+{
+  "version": "0.1.2",
+  "createdAt": "2026-10-03T17:36:27.284Z",
+  "sourceMatchesAsar": true,
+  "packagedManifest": {
+    "name": "ring-chart-editor",
+    "version": "0.1.2",
+    "main": "main.cjs",
+    "dependencies": {
+      "ws": "8.22.0",
+      "qrcode": "1.5.4"
+    },
+    "sha256": "3fdc1fbf65a3dd5cda59a5fc9a1ced1bc40aa2f9febc534179bf59fca6a5e5ea"
+  },
+  "executable": "Builds/ChartEditor/RingChartEditor-0.1.2-win-x64.exe",
+  "bytes": 100231755,
+  "executableSha256": "9f972162a9fd0780c0547eafd34945e6d66b3337249cd7b1d46645ccb652154d",
+  "asarSha256": "3b2cefdeba0be2e032d11a11e488b39d185013dd5e2c631e9c3721275fd74ba5",
+  "tests": {
+    "total": 37,
+    "passed": 37,
+    "failed": 0,
+    "report": "Builds/ChartEditorEvidence/editor-tests.xml"
+  },
+  "native": {
+    "status": "ready",
+    "schemaVersion": "prototype-ring-0",
+    "noteCount": 38,
+    "audioDuration": 36,
+    "sampleRate": 48000,
+    "stageWidth": 472,
+    "stageHeight": 266,
+    "validationErrors": 0,
+    "nativeBridge": true,
+    "layout": {
+      "compact": false,
+      "viewport": {
+        "width": 1524,
+        "height": 961
+      },
+      "toolbarOverlaps": 0,
+      "transportOverlaps": 0,
+      "crampedCards": 0,
+      "actionCards": 8,
+      "takeCards": 0,
+      "timelineHeight": 193,
+      "informationHeight": 161,
+      "canvasRemainsFixedOnScroll": true,
+      "virtualCanvas": true,
+      "canvasFillsViewport": true
+    },
+    "takeLayout": {
+      "compact": false,
+      "viewport": {
+        "width": 1524,
+        "height": 961
+      },
+      "toolbarOverlaps": 0,
+      "transportOverlaps": 0,
+      "crampedCards": 0,
+      "actionCards": 0,
+      "takeCards": 1,
+      "timelineHeight": 193,
+      "informationHeight": 161,
+      "canvasRemainsFixedOnScroll": true,
+      "virtualCanvas": true,
+      "canvasFillsViewport": true
+    },
+    "timestamp": "2026-10-03T17:36:19.614Z",
+    "appVersion": "0.1.2",
+    "tabletRoutes": {
+      "/": 200,
+      "/tablet.mjs": 200,
+      "/tablet.css": 200,
+      "/core/chart.mjs": 200,
+      "/ui/render.mjs": 200
+    }
+  },
+  "portable": {
+    "status": "ready",
+    "schemaVersion": "prototype-ring-0",
+    "noteCount": 38,
+    "audioDuration": 36,
+    "sampleRate": 48000,
+    "stageWidth": 472,
+    "stageHeight": 266,
+    "validationErrors": 0,
+    "nativeBridge": true,
+    "layout": {
+      "compact": false,
+      "viewport": {
+        "width": 1524,
+        "height": 961
+      },
+      "toolbarOverlaps": 0,
+      "transportOverlaps": 0,
+      "crampedCards": 0,
+      "actionCards": 8,
+      "takeCards": 0,
+      "timelineHeight": 193,
+      "informationHeight": 161,
+      "canvasRemainsFixedOnScroll": true,
+      "virtualCanvas": true,
+      "canvasFillsViewport": true
+    },
+    "takeLayout": {
+      "compact": false,
+      "viewport": {
+        "width": 1524,
+        "height": 961
+      },
+      "toolbarOverlaps": 0,
+      "transportOverlaps": 0,
+      "crampedCards": 0,
+      "actionCards": 0,
+      "takeCards": 1,
+      "timelineHeight": 193,
+      "informationHeight": 161,
+      "canvasRemainsFixedOnScroll": true,
+      "virtualCanvas": true,
+      "canvasFillsViewport": true
+    },
+    "timestamp": "2026-10-03T17:36:26.087Z",
+    "appVersion": "0.1.2",
+    "tabletRoutes": {
+      "/": 200,
+      "/tablet.mjs": 200,
+      "/tablet.css": 200,
+      "/core/chart.mjs": 200,
+      "/ui/render.mjs": 200
+    }
+  },
+  "compact": {
+    "status": "ready",
+    "schemaVersion": "prototype-ring-0",
+    "noteCount": 38,
+    "audioDuration": 36,
+    "sampleRate": 48000,
+    "stageWidth": 326,
+    "stageHeight": 183,
+    "validationErrors": 0,
+    "nativeBridge": true,
+    "layout": {
+      "compact": true,
+      "viewport": {
+        "width": 1164,
+        "height": 761
+      },
+      "toolbarOverlaps": 0,
+      "transportOverlaps": 0,
+      "crampedCards": 0,
+      "actionCards": 8,
+      "takeCards": 0,
+      "timelineHeight": 160,
+      "informationHeight": 130,
+      "canvasRemainsFixedOnScroll": true,
+      "virtualCanvas": true,
+      "canvasFillsViewport": true
+    },
+    "takeLayout": {
+      "compact": true,
+      "viewport": {
+        "width": 1164,
+        "height": 761
+      },
+      "toolbarOverlaps": 0,
+      "transportOverlaps": 0,
+      "crampedCards": 0,
+      "actionCards": 0,
+      "takeCards": 1,
+      "timelineHeight": 160,
+      "informationHeight": 130,
+      "canvasRemainsFixedOnScroll": true,
+      "virtualCanvas": true,
+      "canvasFillsViewport": true
+    },
+    "timestamp": "2026-10-03T17:36:19.691Z",
+    "appVersion": "0.1.2",
+    "tabletRoutes": {
+      "/": 200,
+      "/tablet.mjs": 200,
+      "/tablet.css": 200,
+      "/core/chart.mjs": 200,
+      "/ui/render.mjs": 200
+    }
+  },
+  "sourceHashes": {
+    "main.cjs": "2e5a4f8aa04117a1b99bf9907a0e1581f4d65acd8d18f6a16a91332ef6f26a4f",
+    "preload.cjs": "ad70072780ef086fe5e10127355d6be9b06004ef30d757cd6952231c7b95ef40",
+    "src/core/authoring.mjs": "746c2a5dc49d3352da71c2ba85618c9e98d597546732d6534aa7f4ddb2c4f775",
+    "src/core/chart.mjs": "136c5dc5859768260d39da5b0d6c88aa9e7d2e9172c017ce38db3423ac2750c4",
+    "src/core/project.mjs": "c45d1120d2b28e99de30dbb9bb842331f3e85f9804aa652ed0ce45ee04353664",
+    "src/core/storage.mjs": "94e0763f5ee8c91eca6f5cbfd9e2dd5b7317673dbb3857f6ca037c9d4adb7f02",
+    "src/recording/host.mjs": "234111d2d2fe8518f94930c1187d82737a3148a65022b3699f843b2c6a277833",
+    "src/recording/session.mjs": "c6f9005539c0596628f3825e4e6d5b8baf2c646c016557197d53f85e90b4ad54",
+    "src/recording/take-store.mjs": "4cea70cbf715705461cbf9e9b713cc4f13ee65a103a8ab5388e058930e9630eb",
+    "src/tablet/index.html": "7281d8cb67439707a205bbccb3e730e1d0d0466384638a51165d8df566856d5d",
+    "src/tablet/tablet.css": "8970930d9ab08ebea3eaf56177a473738c4fdb48f8f18165cb515f548f1c6a9e",
+    "src/tablet/tablet.mjs": "8e0481965c84c0fccb915f556681f239a35a89ecceeb9994e8a5b20a299557e2",
+    "src/ui/editor.mjs": "ee500f71ed4a010fd14f64b50c7128935173650567eabe61e716f6907b0028f2",
+    "src/ui/index.html": "2251b7078ed5bc0d1fa97120cca78a3451555640d2e0150a71bf531a346d9d09",
+    "src/ui/layout-verification.mjs": "bb6784df4424792ddeba9b095a5a5a056a05b9ceabf282225354fc750d1fb1b6",
+    "src/ui/preview-api.mjs": "f2ec015e5644440145248e831cdc682c1e0ae6e629c62b3d221df56af8ef7463",
+    "src/ui/render.mjs": "13fb6295437047d5582470d15ca5fe250f25683db144e37a3fd9014b2c43209f",
+    "src/ui/styles.css": "9772b2fd69f2f4af6528069db1708bc0a9add3dc33e2a7c314b9847d7df6cfb5",
+    "src/ui/timeline.mjs": "6bbd09aa0736b04d725112394cb7d58f1866650063f390a69d2b5022145f004b",
+    "src/ui/transport.mjs": "5316eb79d69859f2d1ccb53f7e1e27ea955cfa46a6b4712a27724bda406f0aa1",
+    "assets/sample-audio.wav": "c692b74c6a9746bfcfa51a748a23d66ff03cbd9ff4dd8b5fc9d67d5865c09438",
+    "assets/sample-chart.json": "6931242b4ce4d4b32d46bdb1d48a1af73f5a5f1df7a398c4d6e3714cec5bc3d2"
+  }
+}

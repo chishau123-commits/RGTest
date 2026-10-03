@@ -1,0 +1,19 @@
+{
+  "name": "RingGame.Tests.Editor",
+  "rootNamespace": "RingGame.Tests",
+  "references": [
+    "RingGame.Core",
+    "RingGame.Runtime",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": ["TestAssemblies"]
+}

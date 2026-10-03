@@ -1,0 +1,14 @@
+# Unity serialization emits trailing spaces for empty YAML values.
+# Keep that generated format, while checking authored code and prose normally.
+*.meta text eol=lf whitespace=-blank-at-eol
+*.asset text eol=lf whitespace=-blank-at-eol
+*.unity text eol=lf whitespace=-blank-at-eol
+*.cs text eol=lf
+*.asmdef text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.wav binary

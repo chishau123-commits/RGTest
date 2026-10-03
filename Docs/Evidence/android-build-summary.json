@@ -1,0 +1,13 @@
+{
+    "unityVersion": "2022.3.62f3c1",
+    "utc": "2026-10-03T10:34:01.4947724Z",
+    "target": "Android",
+    "result": "Succeeded",
+    "output": "D:\\MyDataInD\\Quad\\Builds\\Android\\RingGame-debug.apk",
+    "totalErrors": 0,
+    "totalWarnings": 0,
+    "totalBytes": 723533661,
+    "durationSeconds": 39.525455,
+    "applicationId": "com.chishau.ringgame.prototype",
+    "development": true
+}
