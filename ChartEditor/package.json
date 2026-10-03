@@ -1,0 +1,27 @@
+{
+  "name": "ring-chart-editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Independent desktop chart authoring and tablet touch recording for Ring Game",
+  "author": "Ring Game contributors",
+  "license": "UNLICENSED",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.mjs",
+    "check": "node tools/check.mjs",
+    "build": "electron-builder --win portable --x64",
+    "build:dir": "electron-builder --win --x64 --dir"
+  },
+  "dependencies": { "ws": "8.22.0", "qrcode": "1.5.4" },
+  "devDependencies": { "electron": "44.5.1", "electron-builder": "26.15.3" },
+  "build": {
+    "appId": "com.chishau.ringcharteditor",
+    "productName": "Ring Chart Editor",
+    "directories": { "output": "../Builds/ChartEditor" },
+    "files": ["main.cjs", "preload.cjs", "src/**/*", "assets/**/*", "package.json"],
+    "asar": true,
+    "win": { "target": ["portable"], "signAndEditExecutable": false },
+    "artifactName": "RingChartEditor-${version}-win-${arch}.${ext}"
+  }
+}

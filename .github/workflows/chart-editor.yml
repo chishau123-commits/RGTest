@@ -1,0 +1,47 @@
+name: Independent chart editor
+on:
+  pull_request:
+    branches: [ReStart]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  editor-contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ChartEditor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: ChartEditor/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run check
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
+  windows-editor:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: ChartEditor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: ChartEditor/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Package independent portable editor
+        run: npm run build
+      - name: Verify native renderer, audio decode and 16:9 stage
+        run: ./tools/native-smoke.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RingChartEditor-Windows
+          path: |
+            Builds/ChartEditor/RingChartEditor-*-win-x64.exe
+            Builds/ChartEditorEvidence/native-profile/startup-report.json
