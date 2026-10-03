@@ -1,0 +1,28 @@
+name: 独立需求
+description: 可自由认领、实现与验收的一条需求
+title: '[需求] '
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 预期行为
+      description: 写清玩家或开发者看到的结果、触发条件与边界。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收步骤
+      description: 可重复的操作、预期结果及所需设备或样段。
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 范围、依赖与不确定项
+      description: 保持需求可独立交付，依赖用链接标明。
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 证据
+      description: 文档、日志、截图、测试或构建编号；认领后通过 PR 提交。

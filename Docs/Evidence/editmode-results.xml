@@ -1,0 +1,250 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<test-run result="Passed" total="69" testcasecount="69" passed="69" failed="0" skipped="0" inconclusive="0" start-time="2026-10-03T09:50:50.4358738Z" end-time="2026-10-03T09:50:50.6976563Z" duration="0.2624158">
+  <test-suite type="TestSuite" id="1083" name="Ring Game Prototype" fullname="Ring Game Prototype" runstate="Runnable" testcasecount="69" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.262416" total="69" passed="69" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties />
+    <test-suite type="Assembly" id="1162" name="RingGame.Tests.Editor.dll" fullname="D:/MyDataInD/Quad/Library/ScriptAssemblies/RingGame.Tests.Editor.dll" runstate="Runnable" testcasecount="69" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.255546" total="69" passed="69" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="62044" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+      </properties>
+      <test-suite type="TestSuite" id="1163" name="RingGame" fullname="RingGame" runstate="Runnable" testcasecount="69" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.255383" total="69" passed="69" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1164" name="Tests" fullname="RingGame.Tests" runstate="Runnable" testcasecount="69" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.255318" total="69" passed="69" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1157" name="ContactCaptureTests" fullname="RingGame.Tests.ContactCaptureTests" classname="RingGame.Tests.ContactCaptureTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.112548" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1160" name="MovingHeldAndEndingContactsDoNotCreateAnotherScoreEvent" fullname="RingGame.Tests.ContactCaptureTests.MovingHeldAndEndingContactsDoNotCreateAnotherScoreEvent" methodname="MovingHeldAndEndingContactsDoNotCreateAnotherScoreEvent" classname="RingGame.Tests.ContactCaptureTests" runstate="Runnable" seed="331300643" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.093941" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1158" name="ReadyUiStillReceivesDownWhenSongIsNotRunning" fullname="RingGame.Tests.ContactCaptureTests.ReadyUiStillReceivesDownWhenSongIsNotRunning" methodname="ReadyUiStillReceivesDownWhenSongIsNotRunning" classname="RingGame.Tests.ContactCaptureTests" runstate="Runnable" seed="1992064527" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.002111" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1159" name="ShortDownUpAndReusedPlatformIdProduceTwoDifferentContacts" fullname="RingGame.Tests.ContactCaptureTests.ShortDownUpAndReusedPlatformIdProduceTwoDifferentContacts" methodname="ShortDownUpAndReusedPlatformIdProduceTwoDifferentContacts" classname="RingGame.Tests.ContactCaptureTests" runstate="Runnable" seed="1566942584" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.002510" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1161" name="SyntheticStreamSupportsSixConcurrentContactsWithoutFourFingerCap" fullname="RingGame.Tests.ContactCaptureTests.SyntheticStreamSupportsSixConcurrentContactsWithoutFourFingerCap" methodname="SyntheticStreamSupportsSixConcurrentContactsWithoutFourFingerCap" classname="RingGame.Tests.ContactCaptureTests" runstate="Runnable" seed="441583906" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.003547" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1085" name="CoreTests" fullname="RingGame.Tests.CoreTests" classname="RingGame.Tests.CoreTests" runstate="Runnable" testcasecount="59" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.138580" total="59" passed="59" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1088" name="ArrivalDiskInterpolatesToReceivingRingAndNeverAutoJudges" fullname="RingGame.Tests.CoreTests.ArrivalDiskInterpolatesToReceivingRingAndNeverAutoJudges" methodname="ArrivalDiskInterpolatesToReceivingRingAndNeverAutoJudges" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1113499898" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.007831" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1114" name="BatchReorderingPreservesStableAssignment" fullname="RingGame.Tests.CoreTests.BatchReorderingPreservesStableAssignment" methodname="BatchReorderingPreservesStableAssignment" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="549826751" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.003308" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1089" name="CameraEvaluationIsAbsoluteAndSupportsSeekAcrossActions" fullname="RingGame.Tests.CoreTests.CameraEvaluationIsAbsoluteAndSupportsSeekAcrossActions" methodname="CameraEvaluationIsAbsoluteAndSupportsSeekAcrossActions" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1102820256" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.001103" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1094" name="CameraSimilarityTransformHasCorrectInverse" fullname="RingGame.Tests.CoreTests.CameraSimilarityTransformHasCorrectInverse" classname="RingGame.Tests.CoreTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.001875" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1090" name="CameraSimilarityTransformHasCorrectInverse(0.0f,1.0f)" fullname="RingGame.Tests.CoreTests.CameraSimilarityTransformHasCorrectInverse(0.0f,1.0f)" methodname="CameraSimilarityTransformHasCorrectInverse" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="585929932" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.001142" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1091" name="CameraSimilarityTransformHasCorrectInverse(90.0f,0.3f)" fullname="RingGame.Tests.CoreTests.CameraSimilarityTransformHasCorrectInverse(90.0f,0.3f)" methodname="CameraSimilarityTransformHasCorrectInverse" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1210090680" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000087" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1092" name="CameraSimilarityTransformHasCorrectInverse(-35.0f,2.5f)" fullname="RingGame.Tests.CoreTests.CameraSimilarityTransformHasCorrectInverse(-35.0f,2.5f)" methodname="CameraSimilarityTransformHasCorrectInverse" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1663600047" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000041" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1093" name="CameraSimilarityTransformHasCorrectInverse(720.0f,1.7f)" fullname="RingGame.Tests.CoreTests.CameraSimilarityTransformHasCorrectInverse(720.0f,1.7f)" methodname="CameraSimilarityTransformHasCorrectInverse" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="2075644077" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000045" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1121" name="CompilerRejectsBadPathReferenceWrongEndAndZeroLength" fullname="RingGame.Tests.CoreTests.CompilerRejectsBadPathReferenceWrongEndAndZeroLength" methodname="CompilerRejectsBadPathReferenceWrongEndAndZeroLength" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="694294673" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000765" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1120" name="CompilerRejectsMissingDataDuplicateIdsInvalidTempoAndUnderstatedChords" fullname="RingGame.Tests.CoreTests.CompilerRejectsMissingDataDuplicateIdsInvalidTempoAndUnderstatedChords" methodname="CompilerRejectsMissingDataDuplicateIdsInvalidTempoAndUnderstatedChords" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1193118209" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000471" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1122" name="CompilerRejectsNoninvertibleNonfiniteAndOverlappingCameras" fullname="RingGame.Tests.CoreTests.CompilerRejectsNoninvertibleNonfiniteAndOverlappingCameras" methodname="CompilerRejectsNoninvertibleNonfiniteAndOverlappingCameras" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1797939666" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000348" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1124" name="CompilerRejectsTempoTimesThatOverflowDespiteFiniteBpm" fullname="RingGame.Tests.CoreTests.CompilerRejectsTempoTimesThatOverflowDespiteFiniteBpm" methodname="CompilerRejectsTempoTimesThatOverflowDespiteFiniteBpm" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1688467664" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000150" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1119" name="CompilerRejectsUnsupportedVersionMotionActionEaseAndDecoration" fullname="RingGame.Tests.CoreTests.CompilerRejectsUnsupportedVersionMotionActionEaseAndDecoration" methodname="CompilerRejectsUnsupportedVersionMotionActionEaseAndDecoration" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1623874433" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000336" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1115" name="ContactsAndNotesAreConsumedAtMostOnceEvenAfterAnUnsuccessfulBegin" fullname="RingGame.Tests.CoreTests.ContactsAndNotesAreConsumedAtMostOnceEvenAfterAnUnsuccessfulBegin" methodname="ContactsAndNotesAreConsumedAtMostOnceEvenAfterAnUnsuccessfulBegin" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1098629817" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000380" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1112" name="EqualCardinalityMatchingMinimizesTotalTimingError" fullname="RingGame.Tests.CoreTests.EqualCardinalityMatchingMinimizesTotalTimingError" methodname="EqualCardinalityMatchingMinimizesTotalTimingError" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1169944666" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000565" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1113" name="EqualTimingMatchingMinimizesNormalizedSpatialDistanceThenUsesStableIds" fullname="RingGame.Tests.CoreTests.EqualTimingMatchingMinimizesNormalizedSpatialDistanceThenUsesStableIds" methodname="EqualTimingMatchingMinimizesNormalizedSpatialDistanceThenUsesStableIds" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="700918101" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000446" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1110" name="ExpirationIsStrictlyAfterInclusiveTailAndOccursOnce" fullname="RingGame.Tests.CoreTests.ExpirationIsStrictlyAfterInclusiveTailAndOccursOnce" methodname="ExpirationIsStrictlyAfterInclusiveTailAndOccursOnce" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="128404335" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000412" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1123" name="InvalidInputFailsBeforeConsumingAnyContacts" fullname="RingGame.Tests.CoreTests.InvalidInputFailsBeforeConsumingAnyContacts" methodname="InvalidInputFailsBeforeConsumingAnyContacts" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1290343571" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000494" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1125" name="JsonParserAcceptsValidDocumentAndPreservesLegalZeroCoordinates" fullname="RingGame.Tests.CoreTests.JsonParserAcceptsValidDocumentAndPreservesLegalZeroCoordinates" methodname="JsonParserAcceptsValidDocumentAndPreservesLegalZeroCoordinates" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1387156604" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.091788" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1149" name="JsonParserEnforcesSizeDepthAndItemLimitsBeforeCompilation" fullname="RingGame.Tests.CoreTests.JsonParserEnforcesSizeDepthAndItemLimitsBeforeCompilation" methodname="JsonParserEnforcesSizeDepthAndItemLimitsBeforeCompilation" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1072336145" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.009222" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1148" name="JsonParserRejectsMalformedJsonAndJavaScriptExtensions" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMalformedJsonAndJavaScriptExtensions" classname="RingGame.Tests.CoreTests" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.001880" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1140" name="JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{\&quot;notes\&quot;:&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{\&quot;notes\&quot;:&quot;)" methodname="JsonParserRejectsMalformedJsonAndJavaScriptExtensions" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1067395438" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000281" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1141" name="JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{}{}&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{}{}&quot;)" methodname="JsonParserRejectsMalformedJsonAndJavaScriptExtensions" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1888533365" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000097" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1142" name="JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{'schemaVersion':'prototype-ring-0'}&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{'schemaVersion':'prototype-ring-0'}&quot;)" methodname="JsonParserRejectsMalformedJsonAndJavaScriptExtensions" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="467967860" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000038" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1143" name="JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{schemaVersion:\&quot;prototype-ring-0\&quot;}&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{schemaVersion:\&quot;prototype-ring-0\&quot;}&quot;)" methodname="JsonParserRejectsMalformedJsonAndJavaScriptExtensions" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1415127624" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000211" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1144" name="JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{\&quot;schemaVersion\&quot;:\&quot;prototype-ring-0\&quot;,}&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{\&quot;schemaVersion\&quot;:\&quot;prototype-ring-0\&quot;,}&quot;)" methodname="JsonParserRejectsMalformedJsonAndJavaScriptExtensions" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="662414576" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000055" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1145" name="JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{\&quot;x\&quot;:01}&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{\&quot;x\&quot;:01}&quot;)" methodname="JsonParserRejectsMalformedJsonAndJavaScriptExtensions" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="260270210" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000041" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1146" name="JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{\&quot;x\&quot;:NaN}&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{\&quot;x\&quot;:NaN}&quot;)" methodname="JsonParserRejectsMalformedJsonAndJavaScriptExtensions" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="860285697" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000333" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1147" name="JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{/*comment*/}&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMalformedJsonAndJavaScriptExtensions(&quot;{/*comment*/}&quot;)" methodname="JsonParserRejectsMalformedJsonAndJavaScriptExtensions" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="660562568" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000057" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-suite type="ParameterizedMethod" id="1129" name="JsonParserRejectsMissingValueFieldsWithTheirPaths" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMissingValueFieldsWithTheirPaths" classname="RingGame.Tests.CoreTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000936" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1126" name="JsonParserRejectsMissingValueFieldsWithTheirPaths(&quot;\&quot;target\&quot;:{\&quot;x\&quot;:0,\&quot;y\&quot;:0},&quot;,&quot;$.notes[0].target&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMissingValueFieldsWithTheirPaths(&quot;\&quot;target\&quot;:{\&quot;x\&quot;:0,\&quot;y\&quot;:0},&quot;,&quot;$.notes[0].target&quot;)" methodname="JsonParserRejectsMissingValueFieldsWithTheirPaths" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1289742217" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000440" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1127" name="JsonParserRejectsMissingValueFieldsWithTheirPaths(&quot;\&quot;tick\&quot;:1920,&quot;,&quot;$.notes[0].tick&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMissingValueFieldsWithTheirPaths(&quot;\&quot;tick\&quot;:1920,&quot;,&quot;$.notes[0].tick&quot;)" methodname="JsonParserRejectsMissingValueFieldsWithTheirPaths" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="410945247" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000151" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1128" name="JsonParserRejectsMissingValueFieldsWithTheirPaths(&quot;\&quot;offsetUs\&quot;:0,&quot;,&quot;$.timebase.offsetUs&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsMissingValueFieldsWithTheirPaths(&quot;\&quot;offsetUs\&quot;:0,&quot;,&quot;$.timebase.offsetUs&quot;)" methodname="JsonParserRejectsMissingValueFieldsWithTheirPaths" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="2131277237" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000072" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1130" name="JsonParserRejectsUnknownAndDuplicateProperties" fullname="RingGame.Tests.CoreTests.JsonParserRejectsUnknownAndDuplicateProperties" methodname="JsonParserRejectsUnknownAndDuplicateProperties" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1461003650" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000313" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1139" name="JsonParserRejectsWrongTypesNullAndNumericOverflow" fullname="RingGame.Tests.CoreTests.JsonParserRejectsWrongTypesNullAndNumericOverflow" classname="RingGame.Tests.CoreTests" runstate="Runnable" testcasecount="8" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.007801" total="8" passed="8" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1131" name="JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;paths\&quot;:[]&quot;,&quot;\&quot;paths\&quot;:null&quot;,&quot;$.paths&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;paths\&quot;:[]&quot;,&quot;\&quot;paths\&quot;:null&quot;,&quot;$.paths&quot;)" methodname="JsonParserRejectsWrongTypesNullAndNumericOverflow" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1536485536" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000312" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1132" name="JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;ppq\&quot;:960&quot;,&quot;\&quot;ppq\&quot;:\&quot;960\&quot;&quot;,&quot;$.timebase.ppq&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;ppq\&quot;:960&quot;,&quot;\&quot;ppq\&quot;:\&quot;960\&quot;&quot;,&quot;$.timebase.ppq&quot;)" methodname="JsonParserRejectsWrongTypesNullAndNumericOverflow" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1321100344" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000101" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1133" name="JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;radius\&quot;:5&quot;,&quot;\&quot;radius\&quot;:\&quot;5\&quot;&quot;,&quot;$.notes[0].radius&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;radius\&quot;:5&quot;,&quot;\&quot;radius\&quot;:\&quot;5\&quot;&quot;,&quot;$.notes[0].radius&quot;)" methodname="JsonParserRejectsWrongTypesNullAndNumericOverflow" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="562344740" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000100" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1134" name="JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;tick\&quot;:1920&quot;,&quot;\&quot;tick\&quot;:1920.0&quot;,&quot;$.notes[0].tick&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;tick\&quot;:1920&quot;,&quot;\&quot;tick\&quot;:1920.0&quot;,&quot;$.notes[0].tick&quot;)" methodname="JsonParserRejectsWrongTypesNullAndNumericOverflow" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="930201311" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000172" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1135" name="JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;target\&quot;:{\&quot;x\&quot;:0,\&quot;y\&quot;:0}&quot;,&quot;\&quot;target\&quot;:[]&quot;,&quot;$.notes[0].target&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;target\&quot;:{\&quot;x\&quot;:0,\&quot;y\&quot;:0}&quot;,&quot;\&quot;target\&quot;:[]&quot;,&quot;$.notes[0].target&quot;)" methodname="JsonParserRejectsWrongTypesNullAndNumericOverflow" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1836335487" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000096" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1136" name="JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;offsetUs\&quot;:0&quot;,&quot;\&quot;offsetUs\&quot;:9223372036854775808&quot;,&quot;$.timebase.offsetUs&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;offsetUs\&quot;:0&quot;,&quot;\&quot;offsetUs\&quot;:9223372036854775808&quot;,&quot;$.timebase.offsetUs&quot;)" methodname="JsonParserRejectsWrongTypesNullAndNumericOverflow" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="857874590" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.003233" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1137" name="JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;radius\&quot;:5&quot;,&quot;\&quot;radius\&quot;:1e39&quot;,&quot;$.notes[0].radius&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;radius\&quot;:5&quot;,&quot;\&quot;radius\&quot;:1e39&quot;,&quot;$.notes[0].radius&quot;)" methodname="JsonParserRejectsWrongTypesNullAndNumericOverflow" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1105665779" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000433" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1138" name="JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;bpm\&quot;:120&quot;,&quot;\&quot;bpm\&quot;:1e999&quot;,&quot;$.timebase.tempos[0].bpm&quot;)" fullname="RingGame.Tests.CoreTests.JsonParserRejectsWrongTypesNullAndNumericOverflow(&quot;\&quot;bpm\&quot;:120&quot;,&quot;\&quot;bpm\&quot;:1e999&quot;,&quot;$.timebase.tempos[0].bpm&quot;)" methodname="JsonParserRejectsWrongTypesNullAndNumericOverflow" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1318882543" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000209" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1111" name="MatchingMaximizesChordInsteadOfLosingRestrictedContactToGreedyChoice" fullname="RingGame.Tests.CoreTests.MatchingMaximizesChordInsteadOfLosingRestrictedContactToGreedyChoice" methodname="MatchingMaximizesChordInsteadOfLosingRestrictedContactToGreedyChoice" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="2064633355" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000404" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1117" name="MoreThanFourSimultaneousTouchesHaveNoArtificialCoreLimit" fullname="RingGame.Tests.CoreTests.MoreThanFourSimultaneousTouchesHaveNoArtificialCoreLimit" methodname="MoreThanFourSimultaneousTouchesHaveNoArtificialCoreLimit" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="151514345" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000966" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1108" name="NegativeInputCalibrationDoesNotPrematurelyMissAndIsAppliedOnce" fullname="RingGame.Tests.CoreTests.NegativeInputCalibrationDoesNotPrematurelyMissAndIsAppliedOnce" methodname="NegativeInputCalibrationDoesNotPrematurelyMissAndIsAppliedOnce" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="2097463165" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000315" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1116" name="OneContactCannotConsumeTwoOverlappingNotes" fullname="RingGame.Tests.CoreTests.OneContactCannotConsumeTwoOverlappingNotes" methodname="OneContactCannotConsumeTwoOverlappingNotes" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="803084170" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000314" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1109" name="QueuedInputsAreJudgedByOriginalTimeBeforeFrameTimeout" fullname="RingGame.Tests.CoreTests.QueuedInputsAreJudgedByOriginalTimeBeforeFrameTimeout" methodname="QueuedInputsAreJudgedByOriginalTimeBeforeFrameTimeout" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="704492274" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000216" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1087" name="ShrinkEdgesCoincideAtHitAndTailKeepsTarget" fullname="RingGame.Tests.CoreTests.ShrinkEdgesCoincideAtHitAndTailKeepsTarget" methodname="ShrinkEdgesCoincideAtHitAndTailKeepsTarget" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1325903965" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000256" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1118" name="SpatialBoundaryIsInclusiveAndTargetsRemainInChartSpace" fullname="RingGame.Tests.CoreTests.SpatialBoundaryIsInclusiveAndTargetsRemainInChartSpace" methodname="SpatialBoundaryIsInclusiveAndTargetsRemainInChartSpace" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="546543943" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000313" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1086" name="TempoIntegrationCrossesChangesAndAppliesOffsetExactlyOnce" fullname="RingGame.Tests.CoreTests.TempoIntegrationCrossesChangesAndAppliesOffsetExactlyOnce" methodname="TempoIntegrationCrossesChangesAndAppliesOffsetExactlyOnce" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="191248206" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000268" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1107" name="TimingWindowsAreSymmetricAndInclusive" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" testcasecount="12" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.001844" total="12" passed="12" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1095" name="TimingWindowsAreSymmetricAndInclusive(-0.035d,Perfect)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(-0.035d,Perfect)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="899214119" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000297" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1096" name="TimingWindowsAreSymmetricAndInclusive(0.035d,Perfect)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(0.035d,Perfect)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="266734939" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000065" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1097" name="TimingWindowsAreSymmetricAndInclusive(-0.035001d,Great)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(-0.035001d,Great)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1248542282" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000042" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1098" name="TimingWindowsAreSymmetricAndInclusive(0.035001d,Great)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(0.035001d,Great)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1353430108" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000040" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1099" name="TimingWindowsAreSymmetricAndInclusive(-0.07d,Great)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(-0.07d,Great)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1536535420" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000036" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1100" name="TimingWindowsAreSymmetricAndInclusive(0.07d,Great)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(0.07d,Great)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1449873291" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000039" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1101" name="TimingWindowsAreSymmetricAndInclusive(-0.070001d,Good)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(-0.070001d,Good)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="716408198" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000037" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1102" name="TimingWindowsAreSymmetricAndInclusive(0.070001d,Good)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(0.070001d,Good)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="751218097" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000037" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1103" name="TimingWindowsAreSymmetricAndInclusive(-0.1d,Good)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(-0.1d,Good)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1387334061" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000036" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1104" name="TimingWindowsAreSymmetricAndInclusive(0.1d,Good)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(0.1d,Good)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1513228115" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000037" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1105" name="TimingWindowsAreSymmetricAndInclusive(-0.100001d,Miss)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(-0.100001d,Miss)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="599600795" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000039" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1106" name="TimingWindowsAreSymmetricAndInclusive(0.100001d,Miss)" fullname="RingGame.Tests.CoreTests.TimingWindowsAreSymmetricAndInclusive(0.100001d,Miss)" methodname="TimingWindowsAreSymmetricAndInclusive" classname="RingGame.Tests.CoreTests" runstate="Runnable" seed="1916388906" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000035" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+          </test-suite>
+          <test-suite type="TestFixture" id="1150" name="TimingTests" fullname="RingGame.Tests.TimingTests" classname="RingGame.Tests.TimingTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.003308" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1153" name="DisplayLatencyIsAppliedOnceToTheOriginalEventTimestamp" fullname="RingGame.Tests.TimingTests.DisplayLatencyIsAppliedOnceToTheOriginalEventTimestamp" methodname="DisplayLatencyIsAppliedOnceToTheOriginalEventTimestamp" classname="RingGame.Tests.TimingTests" runstate="Runnable" seed="1893727762" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.001073" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1156" name="HistoricalInverseUsesTheVisibleTransformAndRejectsOutsideViewport" fullname="RingGame.Tests.TimingTests.HistoricalInverseUsesTheVisibleTransformAndRejectsOutsideViewport" methodname="HistoricalInverseUsesTheVisibleTransformAndRejectsOutsideViewport" classname="RingGame.Tests.TimingTests" runstate="Runnable" seed="647706825" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.001068" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1154" name="MissingFutureAndExpiredPosesAreRejected" fullname="RingGame.Tests.TimingTests.MissingFutureAndExpiredPosesAreRejected" methodname="MissingFutureAndExpiredPosesAreRejected" classname="RingGame.Tests.TimingTests" runstate="Runnable" seed="145985568" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000172" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1151" name="OriginalInputTimeDoesNotChangeWhenProcessingIsDelayed" fullname="RingGame.Tests.TimingTests.OriginalInputTimeDoesNotChangeWhenProcessingIsDelayed" methodname="OriginalInputTimeDoesNotChangeWhenProcessingIsDelayed" classname="RingGame.Tests.TimingTests" runstate="Runnable" seed="22642227" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000132" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1152" name="ScoreCalibrationDoesNotMoveTheSpatialPoseSelection" fullname="RingGame.Tests.TimingTests.ScoreCalibrationDoesNotMoveTheSpatialPoseSelection" methodname="ScoreCalibrationDoesNotMoveTheSpatialPoseSelection" classname="RingGame.Tests.TimingTests" runstate="Runnable" seed="718982885" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000138" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1155" name="StoredAndReturnedPoseCopiesCannotBeChangedByTheCaller" fullname="RingGame.Tests.TimingTests.StoredAndReturnedPoseCopiesCannotBeChangedByTheCaller" methodname="StoredAndReturnedPoseCopiesCannotBeChangedByTheCaller" classname="RingGame.Tests.TimingTests" runstate="Runnable" seed="900921761" result="Passed" start-time="2026-10-03 09:50:50Z" end-time="2026-10-03 09:50:50Z" duration="0.000122" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -1,0 +1,26 @@
+name: Source contract
+
+on:
+  pull_request:
+    branches: [ReStart]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate project and portable source assets
+        run: python tools/check_project.py
+      - name: Check whitespace and conflict markers
+        run: git diff --check "$BASE_SHA" HEAD
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
