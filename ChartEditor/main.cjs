@@ -50,6 +50,7 @@ app.whenReady().then(async () => {
     persistTake: take => takeStore.save(take) });
   handle('editor:clock', () => performance.now() * 1000);
   handle('editor:health', async report => {
+    report.appVersion = app.getVersion();
     if (verification && report.status === 'ready') {
       const info = await host.start(0, '127.0.0.1');
       report.tabletRoutes = {};

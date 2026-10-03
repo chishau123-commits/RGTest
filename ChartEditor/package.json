@@ -1,6 +1,6 @@
 {
   "name": "ring-chart-editor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Independent desktop chart authoring and tablet touch recording for Ring Game",
   "author": "Ring Game contributors",

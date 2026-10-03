@@ -1,14 +1,24 @@
 {
-  "version": "0.1.0",
-  "createdAt": "2026-10-03T15:23:58.269Z",
+  "version": "0.1.1",
+  "createdAt": "2026-10-03T16:38:31.026Z",
   "sourceMatchesAsar": true,
-  "executable": "Builds/ChartEditor/RingChartEditor-0.1.0-win-x64.exe",
-  "bytes": 100222330,
-  "executableSha256": "64b5600113fa4ee13295ac6112556c091d0ad85f91cfe31dc1ed9408f6024707",
-  "asarSha256": "2c20b48926ccc681633190854a31f5d2ed4ae2a0a384038995ffbb45d2206098",
+  "packagedManifest": {
+    "name": "ring-chart-editor",
+    "version": "0.1.1",
+    "main": "main.cjs",
+    "dependencies": {
+      "ws": "8.22.0",
+      "qrcode": "1.5.4"
+    },
+    "sha256": "d0283862ea00d68a5fc2a32f7b9957d7c5273c06e34da429bdcbc01940f45aa1"
+  },
+  "executable": "Builds/ChartEditor/RingChartEditor-0.1.1-win-x64.exe",
+  "bytes": 100223453,
+  "executableSha256": "552ceb50c2f7ac9d9d782eb12a38b56b8379bfe6d0031fa31be9f0db7dd5408a",
+  "asarSha256": "ad2d2fac258bf0be71b1de3732b54e903b222d04d47d89b35272e3e7bfea17e2",
   "tests": {
-    "total": 24,
-    "passed": 24,
+    "total": 29,
+    "passed": 29,
     "failed": 0,
     "report": "Builds/ChartEditorEvidence/editor-tests.xml"
   },
@@ -22,7 +32,8 @@
     "stageHeight": 464,
     "validationErrors": 0,
     "nativeBridge": true,
-    "timestamp": "2026-10-03T15:23:50.507Z",
+    "timestamp": "2026-10-03T16:36:48.502Z",
+    "appVersion": "0.1.1",
     "tabletRoutes": {
       "/": 200,
       "/tablet.mjs": 200,
@@ -41,7 +52,8 @@
     "stageHeight": 464,
     "validationErrors": 0,
     "nativeBridge": true,
-    "timestamp": "2026-10-03T15:23:57.453Z",
+    "timestamp": "2026-10-03T16:36:54.760Z",
+    "appVersion": "0.1.1",
     "tabletRoutes": {
       "/": 200,
       "/tablet.mjs": 200,
@@ -51,8 +63,9 @@
     }
   },
   "sourceHashes": {
-    "main.cjs": "ebfa848133ddcb4f88f168613202e0cedd655446591e42dc815bfa5edfb478e7",
+    "main.cjs": "63576d6aa64c93ffec9984d5132350bd75e431328a115a82bdea0f3a8106ee9e",
     "preload.cjs": "ad70072780ef086fe5e10127355d6be9b06004ef30d757cd6952231c7b95ef40",
+    "src/core/authoring.mjs": "746c2a5dc49d3352da71c2ba85618c9e98d597546732d6534aa7f4ddb2c4f775",
     "src/core/chart.mjs": "136c5dc5859768260d39da5b0d6c88aa9e7d2e9172c017ce38db3423ac2750c4",
     "src/core/project.mjs": "c45d1120d2b28e99de30dbb9bb842331f3e85f9804aa652ed0ce45ee04353664",
     "src/core/storage.mjs": "94e0763f5ee8c91eca6f5cbfd9e2dd5b7317673dbb3857f6ca037c9d4adb7f02",
@@ -62,8 +75,8 @@
     "src/tablet/index.html": "7281d8cb67439707a205bbccb3e730e1d0d0466384638a51165d8df566856d5d",
     "src/tablet/tablet.css": "8970930d9ab08ebea3eaf56177a473738c4fdb48f8f18165cb515f548f1c6a9e",
     "src/tablet/tablet.mjs": "8e0481965c84c0fccb915f556681f239a35a89ecceeb9994e8a5b20a299557e2",
-    "src/ui/editor.mjs": "71f8e8be17b857a668dfa8d3aee8c5c6ec46a544add6c92e80913d046a50a512",
-    "src/ui/index.html": "28b76b46046fabb7946e41467db7609c1420e75a64f59c4a23d27d8ee5e361d9",
+    "src/ui/editor.mjs": "8cde253854fc23aca119f62d4292704406faac2ab55e3ad40110fe70065de11a",
+    "src/ui/index.html": "5d3599a9ba097b7ea2fb95b785a948a7f355fca50e7c1d94e76b5a5dc65c3b66",
     "src/ui/preview-api.mjs": "f2ec015e5644440145248e831cdc682c1e0ae6e629c62b3d221df56af8ef7463",
     "src/ui/render.mjs": "13fb6295437047d5582470d15ca5fe250f25683db144e37a3fd9014b2c43209f",
     "src/ui/styles.css": "bda11c95427b8839dc0926e3092eaa14f98c6454afe861856158a240d7667934",

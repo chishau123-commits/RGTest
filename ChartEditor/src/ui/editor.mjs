@@ -1,5 +1,6 @@
 import { PPQ, WIDTH, clone, tempoMap, cameraAt, unprojectPoint, normalizedToView, quantize, addNote, uniqueId, moveTarget, updateTouches, validateChart, exportChart } from '../core/chart.mjs';
 import { createProject, History, importTake } from '../core/project.mjs';
+import { addCamera, setCameraTiming, planCameraRepair } from '../core/authoring.mjs';
 import { AudioTransport } from './transport.mjs';
 import { compilePreview, drawStage, fitCanvas, waveform } from './render.mjs';
 
@@ -35,10 +36,8 @@ function refresh() {
   if (!issues.some(i => i.severity === 'error' && i.code !== 'E_EMPTY' && i.code !== 'E_AUDIO_TIME')) preview = compilePreview(chart());
   else {
     preview = null;
-    const ctx = stage.getContext('2d'); ctx.fillStyle = '#111926'; ctx.fillRect(0, 0, stage.width, stage.height);
-    ctx.fillStyle = '#f4c783'; ctx.font = '16px Microsoft YaHei'; ctx.textAlign = 'center';
-    ctx.fillText('谱面存在错误，请在校验列表定位并修复', stage.width / 2, stage.height / 2);
-    timeline.getContext('2d').clearRect(0, 0, timeline.width, timeline.height);
+    if (audio.playing) { audio.pause(); publishTransport(true).catch(() => {}); }
+    drawValidationError(); showPanel('issues');
   }
   $('chart-name').textContent = chart().settings.title;
   $('note-count').textContent = `${chart().notes.length} NOTES / ${chart().settings.requiredTouches} TOUCHES`;
@@ -48,6 +47,18 @@ function refresh() {
   $('loop').checked = !!current().loop?.enabled; $('loop-a').value = current().loop?.a ?? 0; $('loop-b').value = current().loop?.b ?? 8;
   renderProperties(); renderTempos(); renderIssues(); renderTakes(); renderActions(); resizeTimeline();
   if (!recording && preview) syncScene().catch(e => setStatus(`平板暂未同步：${e.message}`));
+}
+function drawValidationError() {
+  const ctx = stage.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#111926'; ctx.fillRect(0, 0, stage.width, stage.height);
+  ctx.fillStyle = '#f4c783'; ctx.font = `${16 * Math.min(devicePixelRatio || 1, 2)}px Microsoft YaHei`; ctx.textAlign = 'center';
+  const first = issues.find(i => i.severity === 'error' && !['E_EMPTY', 'E_AUDIO_TIME'].includes(i.code));
+  ctx.fillText('谱面存在错误；请查看下方“校验”', stage.width / 2, stage.height / 2 - 20, stage.width - 40);
+  if (first) ctx.fillText(`${first.objectId || first.path}：${first.message}`, stage.width / 2, stage.height / 2 + 20, stage.width - 40);
+}
+function showPanel(panel) {
+  document.querySelectorAll('[data-panel]').forEach(t => t.classList.toggle('active', t.dataset.panel === panel));
+  for (const p of ['issues', 'takes', 'actions']) $(`${p}-panel`).hidden = panel !== p;
 }
 function field(parent, title, value, callback, { type = 'number', step = 'any', options, readonly = false } = {}) {
   const label = element('label', title), input = element(options ? 'select' : 'input');
@@ -75,7 +86,12 @@ function renderProperties() {
   const isNote = Object.hasOwn(obj, 'motion');
   const update = (label, change) => edit(label, p => { const n = (isNote ? p.chart.notes : p.chart.actions).find(x => x.id === selected); change(n, p.chart); });
   field(parent, 'ID', obj.id, () => {}, { type: 'text', readonly: true });
-  field(parent, '判定 tick', obj.tick, value => update('修改音乐时刻', (n, c) => { n.tick = Math.round(value); updateTouches(c); }), { step: '1' });
+  field(parent, isNote ? '判定 tick' : '开始 tick', obj.tick, value => {
+    try { update('修改音乐时刻', (n, c) => {
+      if (isNote) { n.tick = Math.round(value); updateTouches(c); }
+      else setCameraTiming(c, n.id, { tick: Math.round(value) });
+    }); } finally { renderProperties(); }
+  }, { step: '1' });
   parent.append(element('div', `${tempoMap(chart().timebase).tickToSeconds(obj.tick).toFixed(6)} 秒`, 'hint'));
   if (isNote) {
     field(parent, '出现 tick', obj.spawnTick, v => update('修改预读', n => n.spawnTick = Math.round(v)), { step: '1' });
@@ -90,7 +106,10 @@ function renderProperties() {
     const path = chart().paths.find(x => x.id === obj.pathId);
     if (path) for (const axis of ['x', 'y']) field(parent, `路径起点 ${axis.toUpperCase()}`, path.start[axis], v => update('修改路径起点', (n, c) => c.paths.find(x => x.id === n.pathId).start[axis] = v));
   } else {
-    field(parent, '持续 tick', obj.durationTicks, v => update('修改运镜时长', n => n.durationTicks = Math.round(v)), { step: '1' });
+    field(parent, '持续 tick', obj.durationTicks, v => {
+      try { update('修改运镜时长', (n, c) => setCameraTiming(c, n.id, { durationTicks: Math.round(v) })); }
+      finally { renderProperties(); }
+    }, { step: '1' });
     for (const axis of ['x', 'y']) field(parent, `目标平移 ${axis.toUpperCase()}`, obj.position[axis], v => update('修改运镜平移', n => n.position[axis] = v));
     field(parent, '目标旋转 / °', obj.rotation, v => update('修改运镜旋转', n => n.rotation = v));
     field(parent, '目标缩放', obj.scale, v => update('修改运镜缩放', n => n.scale = v));
@@ -121,6 +140,21 @@ function renderTempos() {
 }
 function renderIssues() {
   $('issue-count').textContent = issues.length; $('issues-panel').replaceChildren();
+  let repairs = [];
+  try { repairs = planCameraRepair(chart()); } catch { /* Malformed timing requires manual correction. */ }
+  if (repairs.length) {
+    const repair = element('button', `顺延冲突运镜 · ${repairs.length} 个（可撤销）`, 'primary');
+    repair.disabled = recording;
+    repair.onclick = run(async () => {
+      const plan = planCameraRepair(chart()), map = tempoMap(chart().timebase);
+      const beyondAudio = plan.some(m => map.tickToSeconds(m.to + m.durationTicks) > audio.duration);
+      const details = plan.map(m => `${m.id}：${m.from} → ${m.to} tick`).join('\n');
+      if (!await confirm('顺延冲突运镜', `以下动作将按原顺序移到最早空闲时段，时长与目标参数保留。音符、音频与原始 Take 保留。\n${details}\n${beyondAudio ? '部分动作会延伸到音频结束之后，请复核。\n' : ''}整批修改可以 Ctrl+Z 撤销。`)) return;
+      if (edit('顺延冲突运镜', p => { for (const m of plan) p.chart.actions.find(a => a.id === m.id).tick = m.to; }))
+        setStatus(`已顺延 ${plan.length} 个运镜；请预览演出，Ctrl+Z 可撤销`);
+    });
+    $('issues-panel').append(repair);
+  }
   if (!issues.length) $('issues-panel').append(element('p', '✓ 当前谱面通过协议与音频时间校验。自动预览仍需手机人工触控核验。', 'muted'));
   for (const issue of issues) {
     const button = element('button', `${issue.severity === 'error' ? '●' : '△'} ${issue.code} · ${issue.objectId || issue.path} — ${issue.message}`, `issue ${issue.severity}`);
@@ -267,8 +301,7 @@ function selectTool(value) {
 }
 document.querySelectorAll('[data-tool]').forEach(e => e.onclick = () => selectTool(e.dataset.tool));
 document.querySelectorAll('[data-panel]').forEach(e => e.onclick = () => {
-  document.querySelectorAll('[data-panel]').forEach(t => t.classList.toggle('active', t === e));
-  for (const p of ['issues', 'takes', 'actions']) $(`${p}-panel`).hidden = e.dataset.panel !== p;
+  showPanel(e.dataset.panel);
 });
 function stagePoint(event, pose = cameraAt(preview.chart, audio.now())) {
   const r = stage.getBoundingClientRect();
@@ -330,12 +363,17 @@ timeline.onpointermove = event => {
   timelineDrag.moved = n.tick !== timelineDrag.initialTick;
   preview = compilePreview(c); setStatus(`拖动 ${n.id} · tick ${n.tick}，松开提交一次撤销`);
 };
-timeline.onpointerup = () => {
+timeline.onpointerup = run(async () => {
   if (!timelineDrag) return;
   const d = timelineDrag; timelineDrag = null;
-  if (d.moved) edit('拖动音乐时间', p => { p.chart = d.chart; updateTouches(p.chart); });
-  refresh();
-};
+  try {
+    if (d.moved) edit('拖动音乐时间', p => {
+      const action = d.chart.actions.find(a => a.id === d.id);
+      if (action) setCameraTiming(p.chart, d.id, { tick: action.tick });
+      else { p.chart = d.chart; updateTouches(p.chart); }
+    });
+  } finally { refresh(); }
+});
 timeline.onpointercancel = () => { timelineDrag = null; refresh(); };
 $('zoom').oninput = resizeTimeline;
 for (const id of ['loop', 'loop-a', 'loop-b']) $(id).onchange = () => {
@@ -345,6 +383,7 @@ for (const id of ['loop', 'loop-a', 'loop-b']) $(id).onchange = () => {
 };
 $('play').onclick = run(async () => {
   if (recording) { await stopRecording(); return; }
+  if (!preview) throw new Error('请先修复下方“校验”中的错误，再播放预览');
   if (audio.playing) { audio.pause(); await publishTransport(true); }
   else { await syncHostClock(); await audio.play(); $('layout').checked = false; await publishTransport(true); }
 });
@@ -366,13 +405,12 @@ $('copy').onclick = () => {
       start: path ? { x: path.start.x + 8, y: path.start.y } : undefined }); id = copy.id; });
   selected = id; renderProperties();
 };
-$('camera-add').onclick = () => {
+$('camera-add').onclick = run(async () => {
   const tick = Math.max(0, quantize(tempoMap(chart().timebase).secondsToTick(audio.now()), Number($('grid').value)));
   const pose = cameraAt(chart(), audio.now()); let id;
-  edit('添加相机动作', p => { id = uniqueId(p.chart, 'cam'); p.chart.actions.push({ id, eventType: 'MoveCamera', tick, durationTicks: PPQ,
-    position: clone(pose.position), rotation: pose.rotation, scale: pose.scale, ease: 'smooth' }); });
+  edit('添加相机动作', p => { id = addCamera(p.chart, { tick, pose }).id; });
   selected = id; renderProperties();
-};
+});
 $('tempo-add').onclick = () => {
   const tick = Math.max(1, quantize(tempoMap(chart().timebase).secondsToTick(audio.now()), Number($('grid').value)));
   if (chart().timebase.tempos.some(t => t.tick === tick)) { setStatus('此 tick 已有 BPM 段'); return; }
@@ -453,7 +491,7 @@ document.addEventListener('keydown', event => {
   if (action) { event.preventDefault(); $(action).click(); }
   else if (event.key === '1') selectTool('shrink'); else if (event.key === '2') selectTool('arrival'); else if (event.key.toLowerCase() === 'v') selectTool('select');
 });
-new ResizeObserver(() => { fitCanvas(stage); resizeTimeline(); }).observe(stage.parentElement);
+new ResizeObserver(() => { fitCanvas(stage); resizeTimeline(); if (history && !preview) drawValidationError(); }).observe(stage.parentElement);
 setInterval(run(async () => {
   if (!history || !dirty || history.revision === lastAutosaveRevision) return;
   await api.autosave(current()); lastAutosaveRevision = history.revision;
