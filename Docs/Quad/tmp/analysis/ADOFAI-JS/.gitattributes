@@ -1,0 +1,6 @@
+dist/* linguist-generated=false
+build/* linguist-generated=false
+*.js linguist-generated=false
+static/* linguist-generated=false
+tools/* linguist-generated=false
+*/ linguist-generated=false

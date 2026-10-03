@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>ADOFAI Level Parser Test</title>
+    <style>
+        .info { margin-top: 10px; color: #666; font-family: monospace; }
+        .controls { margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <input type="file" id="inputFile">
+    
+    <label for="parserSelect">选择解析器:</label>
+    <select id="parserSelect">
+        <option value="ArrayBufferParser">ArrayBufferParser (高性能/新版)</option>
+        <option value="BufferParser">BufferParser (高性能/兼容版)</option>
+        <option value="StringParser">StringParser (高兼容性/传统)</option>
+    </select>
+
+    <button id="export">导出为 .adofai</button>
+</div>
+
+<div id="status" class="info">等待文件输入...</div>
+
+<script src="../dist/umd/index.js"></script>
+<script type="module">
+    let fl, reader;
+    const statusDiv = document.querySelector('#status');
+    const parserSelect = document.querySelector('#parserSelect');
+
+    document.querySelector('#inputFile').addEventListener('change', f => {
+        fl = f.target.files[0];
+        if (!fl) return;
+
+        const selectedParserName = parserSelect.value;
+        statusDiv.innerText = `正在读取文件并使用 ${selectedParserName} 解析...`;
+
+        reader = new FileReader();
+        reader.onload = () => {
+            // 1. 根据选择初始化对应的 Parser
+            window.parser = null;
+            switch (selectedParserName) {
+                case 'BufferParser':
+                    parser = new ADOFAI.Parsers.BufferParser();
+                    break;
+                case 'StringParser':
+                    parser = new ADOFAI.Parsers.StringParser();
+                    break;
+                case 'ArrayBufferParser':
+                default:
+                    parser = new ADOFAI.Parsers.ArrayBufferParser();
+                    break;
+            }
+
+            // 2. 记录开始时间
+            const startTime = performance.now();
+
+            // 3. 初始化 Level
+            // 注意：某些 Parser 可能需要 ArrayBuffer 而不是 Text，这里保持 reader.result 的兼容性处理
+ 
+            const a = new ADOFAI.Level(reader.result, parser);
+            window.CurADOFAI = a;
+
+            a.on('load', () => {
+                // 4. 计算并显示时长
+                const endTime = performance.now();
+                const duration = (endTime - startTime).toFixed(2);
+                
+                const msg = `加载已完成！\n解析器: ${selectedParserName}\n耗时: ${duration} ms`;
+                statusDiv.innerText = msg;
+                alert(msg);
+            });
+
+            a.load();
+        };
+
+        // 根据 Parser 需求选择读取方式
+        // BufferParser 和 ArrayBufferParser 通常处理 ArrayBuffer 性能更好
+        if (selectedParserName.includes('Buffer')) {
+            reader.readAsArrayBuffer(fl);
+        } else {
+            reader.readAsText(fl, 'utf-8-bom');
+        }
+    });
+
+    document.querySelector('#export').addEventListener('click', () => {
+        if (!window.CurADOFAI) {
+            alert("请先加载谱面");
+            return;
+        }
+        const blob = new Blob([CurADOFAI.export(null, null, 2)], { 'type': 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "export.adofai";
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,98 @@
+{
+  "name": "adofai",
+  "version": "3.3.2",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "require": "./dist/umd/index.js"
+    },
+    "./structure": {
+      "types": "./dist/src/structure.d.ts",
+      "import": "./dist/src/structure.js",
+      "default": "./dist/src/structure.js"
+    },
+    "./parser": {
+      "types": "./dist/src/parser/index.d.ts",
+      "import": "./dist/src/parser/index.js",
+      "default": "./dist/src/parser/index.js"
+    },
+    "./parser/string": {
+      "types": "./dist/src/parser/StringParser.d.ts",
+      "import": "./dist/src/parser/StringParser.js",
+      "default": "./dist/src/parser/StringParser.js"
+    },
+    "./parser/buffer": {
+      "types": "./dist/src/parser/BufferParser.d.ts",
+      "import": "./dist/src/parser/BufferParser.js",
+      "default": "./dist/src/parser/BufferParser.js"
+    },
+    "./parser/array-buffer": {
+      "types": "./dist/src/parser/ArrayBufferParser.d.ts",
+      "import": "./dist/src/parser/ArrayBufferParser.js",
+      "default": "./dist/src/parser/ArrayBufferParser.js"
+    },
+    "./pathdata": {
+      "types": "./dist/src/pathdata/index.d.ts",
+      "import": "./dist/src/pathdata/index.js",
+      "default": "./dist/src/pathdata/index.js"
+    },
+    "./filter": {
+      "types": "./dist/src/filter/presets.d.ts",
+      "import": "./dist/src/filter/presets.js",
+      "default": "./dist/src/filter/presets.js"
+    },
+    "./filter/effect-processor": {
+      "types": "./dist/src/filter/effectProcessor.d.ts",
+      "import": "./dist/src/filter/effectProcessor.js",
+      "default": "./dist/src/filter/effectProcessor.js"
+    },
+    "./event": {
+      "types": "./dist/src/events/index.d.ts",
+      "import": "./dist/src/events/index.js",
+      "default": "./dist/src/events/index.js"
+    },
+    "./types": {
+      "types": "./dist/src/types.d.ts",
+      "import": "./dist/src/types.js",
+      "default": "./dist/src/types.js"
+    }
+  },
+  "scripts": {
+    "webpack": "webpack",
+    "tsc": "tsc",
+    "build": "webpack && pnpm tsc"
+  },
+  "keywords": [
+    "adofai",
+    "adofai-js",
+    "adofai-ts",
+    "adofai-ts-lib"
+  ],
+  "files": [
+    "dist"
+  ],
+  "author": "Xbodwf",
+  "license": "BSD-3-Clause",
+  "homepage": "https://xbodwf.github.io/packages/adofai-js/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xbodwf/ADOFAI-JS.git"
+  },
+  "bugs": "https://github.com/Xbodwf/ADOFAI-JS/issues",
+  "description": "A Javascript library for ADOFAI levels.",
+  "devDependencies": {
+    "@babel/core": "^7.27.1",
+    "@babel/preset-env": "^7.27.2",
+    "@types/node": "^20.11.0",
+    "babel-loader": "^10.0.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.9.3",
+    "webpack": "^5.99.9",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {},
+  "packageManager": "pnpm@11.21.0+sha512.521705bce689924eac72f5a3587122f362689ef6571e55ba80076fd637c11132ecffada26fad4ea79c485bfddbfd3d5a2a5b05805a77e893de71ec8a6cca3bb1"
+}

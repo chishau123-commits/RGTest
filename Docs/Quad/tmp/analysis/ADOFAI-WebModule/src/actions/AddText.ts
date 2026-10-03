@@ -1,0 +1,20 @@
+import { Font, Position, DecoRelativeTo } from "../types";
+import { Action, Color } from "../classes";
+
+export class AddText extends Action {
+    constructor(
+        floor: number,
+        public decText: string = "",
+        public font: Font = "Default",
+        public position: Position = [0, 0],
+        public relativeTo: DecoRelativeTo = "Tile",
+        public pivotOffset: Position = [0, 0],
+        public rotation: number = 0,
+        public scale: number = 100,
+        public color: Color = new Color(),
+        public depth: number = 0,
+        public tag: string = ""
+    ) {
+        super(floor, "AddText");
+    }
+}

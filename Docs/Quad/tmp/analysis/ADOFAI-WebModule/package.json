@@ -1,0 +1,33 @@
+{
+    "name": "adofai-webmodule",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "test": "jest",
+        "prepack": "tsc",
+        "build:docs": "typedoc --out docs src/index.ts"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/CrackThrough/ADOFAI-WebModule.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/CrackThrough/ADOFAI-WebModule/issues"
+    },
+    "homepage": "https://github.com/CrackThrough/ADOFAI-WebModule#readme",
+    "devDependencies": {
+        "@types/walk": "^2.3.1",
+        "jest": "^27.0.6",
+        "prettier": "^2.3.2",
+        "ts-node": "^10.1.0",
+        "typedoc": "^0.21.5",
+        "typescript": "^4.3.5"
+    },
+    "dependencies": {
+        "walk": "^2.3.14"
+    }
+}
