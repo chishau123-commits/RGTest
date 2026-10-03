@@ -35,9 +35,11 @@ const report = { version: pkg.version, createdAt: new Date().toISOString(), sour
   tests: { total: totalTests, passed: totalTests - failedTests, failed: failedTests, report: 'Builds/ChartEditorEvidence/editor-tests.xml' },
   native: JSON.parse(await fs.readFile(path.join(repo, 'Builds/ChartEditorEvidence/native-profile/startup-report.json'), 'utf8')),
   portable: JSON.parse(await fs.readFile(path.join(repo, 'Builds/ChartEditorEvidence/portable-profile/startup-report.json'), 'utf8')),
+  compact: JSON.parse(await fs.readFile(path.join(repo, 'Builds/ChartEditorEvidence/compact-profile/startup-report.json'), 'utf8')),
   sourceHashes };
 if (report.native.status !== 'ready' || report.portable.status !== 'ready' ||
-  report.native.appVersion !== pkg.version || report.portable.appVersion !== pkg.version) throw new Error('Startup evidence missing or from a different version');
+  report.native.appVersion !== pkg.version || report.portable.appVersion !== pkg.version || report.compact.status !== 'ready' ||
+  report.compact.appVersion !== pkg.version || !report.compact.layout?.compact) throw new Error('Startup evidence missing or from a different version');
 await fs.mkdir(path.join(repo, 'Docs/Evidence'), { recursive: true });
 await fs.writeFile(path.join(repo, 'Docs/Evidence/chart-editor-build.json'), JSON.stringify(report, null, 2) + '\n');
 console.log(JSON.stringify({ sourceMatchesAsar: true, sourceFiles: Object.keys(sourceHashes).length, bytes: report.bytes, sha256: report.executableSha256 }, null, 2));

@@ -39,9 +39,12 @@ jobs:
         run: npm run build
       - name: Verify native renderer, audio decode and 16:9 stage
         run: ./tools/native-smoke.ps1
+      - name: Verify compact window and lower workspace geometry
+        run: ./tools/native-smoke.ps1 -WindowSize '1180x800' -EvidenceDirectory '../Builds/ChartEditorEvidence/compact-profile'
       - uses: actions/upload-artifact@v4
         with:
           name: RingChartEditor-Windows
           path: |
             Builds/ChartEditor/RingChartEditor-*-win-x64.exe
             Builds/ChartEditorEvidence/native-profile/startup-report.json
+            Builds/ChartEditorEvidence/compact-profile/startup-report.json

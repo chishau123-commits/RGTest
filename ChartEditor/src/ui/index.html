@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'">
 <title>Ring Chart Editor</title><link rel="stylesheet" href="styles.css"></head>
 <body>
-<header><div class="brand"><span class="mark">◎</span><div><strong>RING / STUDIO</strong><small>独立制谱器 · 0.1.1</small></div></div>
+<header><div class="brand"><span class="mark">◎</span><div><strong>RING / STUDIO</strong><small>独立制谱器 · 0.1.2</small></div></div>
 <nav><button id="new">新建</button><button id="open">打开</button><button id="save">保存工程</button><button id="audio">导入音频</button><button id="export" class="primary">导出游戏谱面 ↗</button></nav>
 <div class="file-state" id="save-state">原创演示工程</div></header>
 <main>
@@ -25,10 +25,10 @@
 <button id="recover" class="wide subtle">恢复自动草稿</button>
 </aside>
 <section class="workspace"><div class="workspace-top"><div><div class="eyebrow">CHART WORKSPACE</div><h1 id="chart-name">Ring Lab</h1></div><div class="pill" id="note-count">38 NOTES / 3 TOUCHES</div></div>
-<div class="stage-wrap"><canvas id="stage" aria-label="谱面舞台"></canvas><div class="stage-caption"><span>16:9 · 横屏触控舞台</span><span id="stage-mode">LAYOUT</span></div></div>
-<div class="transport"><button id="play" class="play" aria-label="播放或暂停">▶</button><button id="stop" aria-label="返回开头">■</button><strong id="time">00:00.000</strong><span id="beat" class="muted">1 : 1 : 000</span><div class="grow"></div><button id="undo">↶ 撤销</button><button id="redo">↷ 重做</button><button id="copy">复制</button><button id="delete">删除</button></div>
-<div class="timeline-toolbar"><span>时间轴</span><label>缩放 <input id="zoom" type="range" min="35" max="220" value="80"></label><label><input type="checkbox" id="loop"> A/B 循环</label><label>A <input id="loop-a" type="number" value="0" min="0" step="0.1"></label><label>B <input id="loop-b" type="number" value="8" min="0" step="0.1"></label></div>
-<div class="timeline-scroll" id="timeline-scroll"><canvas id="timeline" aria-label="波形、音符与相机时间轴"></canvas></div>
+<div class="preview-area"><div class="stage-wrap"><canvas id="stage" aria-label="谱面舞台"></canvas><div class="stage-caption"><span>16:9 · 横屏触控舞台</span><span id="stage-mode">LAYOUT</span></div></div></div>
+<div class="transport"><div class="playback-controls"><button id="play" class="play" aria-label="播放或暂停">▶</button><button id="stop" aria-label="返回开头">■</button><strong id="time">00:00.000</strong><span id="beat" class="muted">1 : 1 : 000</span></div><div class="edit-controls"><button id="undo">↶ 撤销</button><button id="redo">↷ 重做</button><button id="copy">复制</button><button id="delete">删除</button></div></div>
+<div class="timeline-toolbar"><div class="timeline-heading"><strong>时间轴</strong><span id="timeline-help">两端拉伸 · 中间移动 · 拖动金色指针定位</span></div><div class="timeline-options"><label>缩放 <input id="zoom" type="range" min="35" max="220" value="80"></label><label class="loop-toggle"><input type="checkbox" id="loop"> A/B 循环</label><label>A <input id="loop-a" type="number" value="0" min="0" step="0.1"></label><label>B <input id="loop-b" type="number" value="8" min="0" step="0.1"></label></div></div>
+<div class="timeline-scroll" id="timeline-scroll"><div id="timeline-content"><canvas id="timeline" tabindex="0" aria-label="时间轴：音符出现至判定、运镜起止；两端拉伸，中间移动，标尺拖动定位" aria-describedby="timeline-help"></canvas></div></div>
 <div class="bottom-panel"><div class="panel-tabs"><button class="tab active" data-panel="issues">校验 <span id="issue-count">0</span></button><button class="tab" data-panel="takes">录入 Take <span id="take-count">0</span></button><button class="tab" data-panel="actions">相机动作</button></div><div id="issues-panel" class="panel-content"></div><div id="takes-panel" class="panel-content" hidden></div><div id="actions-panel" class="panel-content" hidden></div></div>
 </section>
 <aside class="right"><div class="eyebrow">INSPECTOR</div><h2 id="selection-title">谱面设置</h2><div id="properties"></div>

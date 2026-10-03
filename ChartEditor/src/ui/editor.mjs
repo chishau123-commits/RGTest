@@ -3,13 +3,14 @@ import { createProject, History, importTake } from '../core/project.mjs';
 import { addCamera, setCameraTiming, planCameraRepair } from '../core/authoring.mjs';
 import { AudioTransport } from './transport.mjs';
 import { compilePreview, drawStage, fitCanvas, waveform } from './render.mjs';
+import { TIMELINE, layoutTimeline, hitTimeline, beginTimelineGesture, moveTimelineGesture, commitTimelineGesture, scrubSeconds, gridStep } from './timeline.mjs';
 
 const $ = id => document.getElementById(id), api = window.editorAPI || (await import('./preview-api.mjs')).previewAPI, stage = $('stage'), timeline = $('timeline');
 const audio = new AudioTransport();
 let history, preview, waves = null, selected = null, tool = 'select', dirty = false, issues = [], lastUI = 0, lastBeat = -1;
 let tabletInfo = null, recording = false, hostOffsetUs = 0, hostClockUncertaintyUs = 0, activeTake = null, saving = false, drag = null;
 let timelinePps = 80, lastAutosaveRevision = -1, recoveryOffer = null;
-let timelineDrag = null;
+let timelineDrag = null, timelineLayout = null;
 const pendingTakes = new Set();
 const sha256 = async bytes => [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(b => b.toString(16).padStart(2, '0')).join('');
 const current = () => history.value;
@@ -28,6 +29,7 @@ async function confirm(title, message) {
 function selectedObject() { return [...chart().notes, ...chart().actions].find(n => n.id === selected); }
 function edit(label, change) {
   if (recording) { setStatus('请先停止录制，再编辑谱面'); return false; }
+  if (timelineDrag) cancelTimelineDrag();
   if (history.commit(label, change)) { dirty = true; refresh(); return true; }
   return false;
 }
@@ -181,52 +183,91 @@ function renderTakes() {
       selected = added[0] || null; refresh(); setStatus(`导入 ${added.length} 个音符；重叠与越界请检查校验列表`);
     });
     raw.onclick = run(async () => { const file = await api.exportTake(take); if (file) setStatus(`原始 Take 已保存：${file}`); });
-    row.append(summary, apply, raw); $('takes-panel').append(row);
+    const controls = element('div', null, 'card-controls'); controls.append(apply, raw);
+    row.append(summary, controls); $('takes-panel').append(row);
   }
 }
 function renderActions() {
   $('actions-panel').replaceChildren();
   for (const a of [...chart().actions].sort((a, b) => a.tick - b.tick)) {
     const row = element('div', null, 'action-row'), select = element('button', '选择');
-    row.append(element('strong', `${a.id} · ${a.tick} → ${a.tick + a.durationTicks}`), element('span', `${a.rotation}° / ×${a.scale}`, 'muted'));
+    row.append(element('strong', `${a.id} · ${a.tick} → ${a.tick + a.durationTicks} tick`), element('span', `持续 ${a.durationTicks} tick · 旋转 ${a.rotation}° · 缩放 ×${a.scale}`, 'muted'));
     select.onclick = run(async () => { selected = a.id; await seek(tempoMap(chart().timebase).tickToSeconds(a.tick)); renderProperties(); });
-    row.append(select); $('actions-panel').append(row);
+    const controls = element('div', null, 'card-controls'); controls.append(select);
+    row.append(controls); $('actions-panel').append(row);
   }
   if (!chart().actions.length) $('actions-panel').append(element('p', '在当前拍添加运镜，右侧编辑平移、旋转、缩放和缓动。相机动作不可重叠。', 'muted'));
 }
 function resizeTimeline() {
+  const scroll = $('timeline-scroll'), content = $('timeline-content');
   const duration = Math.max(audio.duration, 10);
-  timelinePps = Math.min(Number($('zoom').value), 28000 / duration);
-  const width = Math.max($('timeline-scroll').clientWidth - 4, duration * timelinePps + 100), dpr = Math.min(devicePixelRatio || 1, 2);
-  timeline.style.width = `${width}px`; timeline.width = Math.round(width * dpr); timeline.height = Math.round(120 * dpr);
+  timelinePps = Math.min(Number($('zoom').value), 10000000 / duration);
+  timelineLayout = preview ? layoutTimeline(timelineDrag?.gesture?.original || chart(), timelinePps) : null;
+  const width = Math.max(scroll.clientWidth, duration * timelinePps + TIMELINE.origin + 80);
+  content.style.width = `${width}px`; content.style.height = `${Math.max(scroll.clientHeight, timelineLayout?.height || 190)}px`;
+  // The canvas follows the viewport, not the full song/lane area: long or dense charts stay bounded.
+  const dpr = Math.min(devicePixelRatio || 1, 2), viewWidth = scroll.clientWidth, viewHeight = scroll.clientHeight;
+  timeline.style.width = `${viewWidth}px`; timeline.style.height = `${viewHeight}px`;
+  timeline.width = Math.max(1, Math.round(viewWidth * dpr)); timeline.height = Math.max(1, Math.round(viewHeight * dpr));
 }
 function drawTimeline(song) {
-  const ctx = timeline.getContext('2d'), dpr = Math.min(devicePixelRatio || 1, 2), w = timeline.width / dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, 120);
-  ctx.fillStyle = '#151f2c'; ctx.fillRect(0, 0, w, 120);
-  ctx.font = '10px Segoe UI'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#849ab2';
-  ctx.fillText('WAVE', 8, 42); ctx.fillText('NOTE', 8, 78); ctx.fillText('CAM', 8, 104);
-  const xAt = s => 65 + s * timelinePps, duration = audio.duration || 10;
-  const timelineChart = timelineDrag?.chart || preview.chart, map = tempoMap(timelineChart.timebase), lastTick = map.secondsToTick(duration);
-  const tickStep = PPQ * Math.max(1, Math.ceil(lastTick / PPQ / 4000));
-  for (let t = 0; Number.isFinite(lastTick) && t <= lastTick; t += tickStep) {
-    const x = xAt(map.tickToSeconds(t)); if (x < 65) continue;
-    ctx.strokeStyle = t % (4 * PPQ) === 0 ? '#435468' : '#26384b'; ctx.beginPath(); ctx.moveTo(x, 18); ctx.lineTo(x, 117); ctx.stroke();
-    if (t % (4 * PPQ) === 0) { ctx.fillStyle = '#9ab0c7'; ctx.fillText(String(t / PPQ / 4 + 1), x + 3, 10); }
+  if (!timelineLayout) return;
+  const scroll = $('timeline-scroll'), sx = scroll.scrollLeft, sy = scroll.scrollTop;
+  const ctx = timeline.getContext('2d'), dpr = Math.min(devicePixelRatio || 1, 2), w = timeline.width / dpr, h = timeline.height / dpr;
+  const { map, bars, sections } = timelineLayout, xAt = s => TIMELINE.origin + s * timelinePps;
+  const duration = audio.duration || 10, firstTick = map.secondsToTick(sx / timelinePps), lastTick = map.secondsToTick((sx + w) / timelinePps);
+  const tickStep = PPQ * Math.max(1, Math.ceil((lastTick - firstTick) / PPQ / 1000)), ticks = [];
+  for (let t = Math.max(0, Math.floor(firstTick / tickStep) * tickStep); Number.isFinite(lastTick) && t <= lastTick; t += tickStep) ticks.push(t);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#151f2c'; ctx.fillRect(0, 0, w, h); ctx.font = '11px Segoe UI'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.save(); ctx.beginPath(); ctx.rect(TIMELINE.origin, TIMELINE.ruler, w - TIMELINE.origin, h - TIMELINE.ruler); ctx.clip(); ctx.translate(-sx, -sy);
+  for (const s of sections) {
+    ctx.fillStyle = '#1a2635'; ctx.fillRect(sx, s.top, w, 22);
+    for (let lane = 0; lane < s.lanes; lane++) {
+      const y = s.top + 22 + lane * TIMELINE.laneHeight;
+      if (y + TIMELINE.laneHeight < sy || y > sy + h) continue;
+      ctx.fillStyle = lane % 2 ? '#192535' : '#162130'; ctx.fillRect(sx, y, w, TIMELINE.laneHeight);
+    }
+  }
+  for (const t of ticks) {
+    const x = xAt(map.tickToSeconds(t));
+    ctx.strokeStyle = t % (4 * PPQ) === 0 ? '#435468' : '#26384b'; ctx.beginPath(); ctx.moveTo(x, sy); ctx.lineTo(x, sy + h); ctx.stroke();
   }
   if (waves) {
     ctx.strokeStyle = '#478f9b'; ctx.beginPath();
-    waves.forEach((v, i) => { const x = xAt(i / waves.length * duration); ctx.moveTo(x, 42 - v * 16); ctx.lineTo(x, 42 + v * 16); }); ctx.stroke();
+    waves.forEach((v, i) => { const x = xAt(i / waves.length * duration); if (x < sx || x > sx + w) return; ctx.moveTo(x, 58 - v * 19); ctx.lineTo(x, 58 + v * 19); }); ctx.stroke();
   }
-  for (const n of timelineChart.notes) {
-    const x = xAt(map.tickToSeconds(n.tick)); ctx.fillStyle = n.id === selected ? '#f4c783' : n.motion === 'shrink' ? '#70e1df' : '#b89bff';
-    ctx.fillRect(x - 3, 70, 6, 14);
+  for (const b of bars) {
+    const changing = timelineDrag?.gesture.id === b.id && timelineDrag.result;
+    const left = changing ? timelineLayout.xAt(changing.start) : b.left;
+    const right = changing ? Math.max(left + 22, timelineLayout.xAt(changing.end)) : b.right;
+    if (right < sx + TIMELINE.origin || left > sx + w || b.bottom < sy + TIMELINE.ruler || b.top > sy + h) continue;
+    const color = b.id === selected ? '#f4c783' : b.kind === 'camera' ? '#719af0' : b.motion === 'arrival' ? '#b89bff' : '#70e1df';
+    ctx.fillStyle = color + '40'; ctx.fillRect(left, b.top, right - left, TIMELINE.barHeight);
+    ctx.strokeStyle = color; ctx.lineWidth = b.id === selected ? 2 : 1; ctx.strokeRect(left + .5, b.top + .5, right - left - 1, TIMELINE.barHeight - 1);
+    ctx.fillStyle = color; ctx.fillRect(left + 4, b.top + 5, 3, 12); ctx.fillRect(right - 7, b.top + 5, 3, 12);
+    if (right - left > 55) {
+      ctx.save(); ctx.beginPath(); ctx.rect(left + 12, b.top, right - left - 24, TIMELINE.barHeight); ctx.clip();
+      ctx.fillStyle = '#edf3fa'; ctx.fillText(b.id, left + 13, b.top + 11); ctx.restore();
+    }
   }
-  for (const a of timelineChart.actions) {
-    const x = xAt(map.tickToSeconds(a.tick)), end = xAt(map.tickToSeconds(a.tick + a.durationTicks));
-    ctx.fillStyle = a.id === selected ? '#f4c783' : '#719af0'; ctx.fillRect(x, 96, Math.max(5, end - x), 11);
+  ctx.restore();
+  ctx.fillStyle = '#111c29'; ctx.fillRect(0, 0, TIMELINE.origin, h); ctx.fillStyle = '#9bb0c7';
+  if (58 - sy > TIMELINE.ruler) ctx.fillText('波形', 12, 58 - sy);
+  for (const s of sections) {
+    if (s.top + 11 - sy > TIMELINE.ruler && s.top - sy < h) ctx.fillText(s.kind === 'note' ? '音符预读' : '运镜', 8, s.top + 11 - sy);
+    for (let lane = 0; lane < s.lanes; lane++) {
+      const y = s.top + 33 + lane * TIMELINE.laneHeight - sy;
+      if (y > TIMELINE.ruler && y < h) ctx.fillText(`${s.kind === 'note' ? 'N' : 'C'} ${lane + 1}`, 16, y);
+    }
   }
-  ctx.strokeStyle = '#f4c783'; ctx.lineWidth = 1.5; const x = xAt(song); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 120); ctx.stroke();
+  ctx.fillStyle = '#253448'; ctx.fillRect(0, 0, w, TIMELINE.ruler); ctx.fillStyle = '#c0cfdf'; ctx.fillText('小节', 12, 16);
+  for (const t of ticks) if (t % (4 * PPQ) === 0) { const x = xAt(map.tickToSeconds(t)) - sx; if (x >= TIMELINE.origin && x < w) ctx.fillText(String(t / PPQ / 4 + 1), x + 4, 17); }
+  const x = xAt(song) - sx;
+  if (x >= TIMELINE.origin && x <= w) {
+    ctx.strokeStyle = '#f4c783'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    ctx.fillStyle = '#f4c783'; ctx.beginPath(); ctx.moveTo(x - 7, 0); ctx.lineTo(x + 7, 0); ctx.lineTo(x + 7, 10); ctx.lineTo(x, 17); ctx.lineTo(x - 7, 10); ctx.closePath(); ctx.fill();
+  }
 }
 async function syncHostClock() {
   let best = null;
@@ -287,6 +328,7 @@ async function loadAudio(data) {
   $('audio-info').textContent = `${data.name} · ${audio.duration.toFixed(2)} s · ${buffer.sampleRate} Hz`;
 }
 async function replaceProject(project) {
+  if (timelineDrag) cancelTimelineDrag();
   if (recording) await stopRecording();
   audio.pause();
   if (project.audio) await loadAudio(project.audio);
@@ -340,56 +382,99 @@ stage.onpointerup = () => {
   refresh();
 };
 stage.onpointercancel = () => { drag = null; refresh(); };
-timeline.onpointerdown = run(async event => {
-  if (recording || !preview) return;
-  const rect = timeline.getBoundingClientRect(), x = event.clientX - rect.left, y = event.clientY - rect.top;
-  const seconds = Math.max(0, (x - 65) / timelinePps), map = tempoMap(chart().timebase);
-  const objects = y > 90 ? chart().actions : y > 62 ? chart().notes : [];
-  const near = [...objects].sort((a, b) => Math.abs(map.tickToSeconds(a.tick) - seconds) - Math.abs(map.tickToSeconds(b.tick) - seconds))[0];
-  selected = near && Math.abs(map.tickToSeconds(near.tick) - seconds) * timelinePps < 10 ? near.id : null;
-  if (selected) {
-    timelineDrag = { id: selected, chart: clone(chart()), initialTick: near.tick, preRoll: near.motion ? near.tick - near.spawnTick : null, moved: false };
-    timeline.setPointerCapture(event.pointerId);
+function timelinePoint(event) {
+  const r = timeline.getBoundingClientRect(), scroll = $('timeline-scroll');
+  return { x: event.clientX - r.left + scroll.scrollLeft, y: event.clientY - r.top + scroll.scrollTop,
+    localX: event.clientX - r.left, localY: event.clientY - r.top };
+}
+function timelineHit(event) {
+  const p = timelinePoint(event);
+  if (p.localX < TIMELINE.origin || !timelineLayout) return null;
+  return p.localY < TIMELINE.ruler ? { mode: 'scrub' } : hitTimeline(timelineLayout, p.x, p.y, { selected, song: audio.now() });
+}
+function updateTimelineDrag() {
+  const d = timelineDrag;
+  if (!d?.pending) return;
+  d.pending = false;
+  const p = timelinePoint(d.pointer), seconds = (p.x - TIMELINE.origin) / timelinePps;
+  if (d.gesture.mode === 'scrub') {
+    audio.seek(scrubSeconds(timelineLayout, p.x, audio.duration));
+    setStatus(`定位 ${audio.now().toFixed(3)} 秒 · 松开结束；Esc 返回拖动前位置`);
+  } else {
+    d.result = moveTimelineGesture(d.gesture, seconds); preview = compilePreview(d.result.chart);
+    const part = d.gesture.mode === 'move' ? '移动' : d.gesture.mode === 'start' ? '调整左端' : '调整右端';
+    setStatus(`${part} ${d.gesture.id} · ${d.result.start} → ${d.result.end} tick · 松开提交，Esc 取消`);
   }
-  const tick = quantize(map.secondsToTick(seconds), Number($('grid').value));
-  await seek(Math.max(0, map.tickToSeconds(tick))); renderProperties();
+}
+function cancelTimelineDrag() {
+  const d = timelineDrag; if (!d) return;
+  timelineDrag = null;
+  if (d.gesture.mode === 'scrub') { audio.seek(d.initialSong); publishTransport(true).catch(() => {}); }
+  try { if (timeline.hasPointerCapture(d.pointerId)) timeline.releasePointerCapture(d.pointerId); } catch {}
+  timeline.style.cursor = 'default'; refresh(); setStatus('已取消时间轴拖动');
+}
+timeline.onpointerdown = run(async event => {
+  if (event.button !== 0 || recording || !preview || timelineDrag) return;
+  const hit = timelineHit(event); if (!hit) return;
+  event.preventDefault(); timeline.focus({ preventScroll: true });
+  const initialSong = audio.now(); audio.pause();
+  const p = timelinePoint(event), seconds = (p.x - TIMELINE.origin) / timelinePps;
+  const gesture = beginTimelineGesture(chart(), hit, seconds, Number($('grid').value));
+  if (hit.bar) { selected = hit.bar.id; renderProperties(); }
+  timelineDrag = { gesture, initialSong, pointerId: event.pointerId, pointer: event, initialX: event.clientX,
+    movedPointer: false, pending: hit.mode === 'scrub', result: null };
+  timeline.setPointerCapture(event.pointerId); updateTimelineDrag();
+  timeline.style.cursor = hit.mode === 'move' ? 'grabbing' : hit.mode === 'scrub' ? 'col-resize' : 'ew-resize';
+  await publishTransport(true);
 });
-timeline.onpointermove = event => {
-  if (!timelineDrag) return;
-  const r = timeline.getBoundingClientRect(), seconds = Math.max(0, (event.clientX - r.left - 65) / timelinePps);
-  const c = timelineDrag.chart, n = [...c.notes, ...c.actions].find(x => x.id === timelineDrag.id);
-  n.tick = Math.max(n.motion ? 1 : 0, quantize(tempoMap(c.timebase).secondsToTick(seconds), Number($('grid').value)));
-  if (n.motion) n.spawnTick = Math.max(0, n.tick - timelineDrag.preRoll);
-  timelineDrag.moved = n.tick !== timelineDrag.initialTick;
-  preview = compilePreview(c); setStatus(`拖动 ${n.id} · tick ${n.tick}，松开提交一次撤销`);
-};
-timeline.onpointerup = run(async () => {
-  if (!timelineDrag) return;
-  const d = timelineDrag; timelineDrag = null;
+timeline.onpointermove = run(async event => {
+  if (timelineDrag) {
+    if (event.pointerId === timelineDrag.pointerId) {
+      timelineDrag.pointer = event; timelineDrag.pending = true;
+      if (Math.abs(event.clientX - timelineDrag.initialX) > 3) timelineDrag.movedPointer = true;
+    }
+    return;
+  }
+  const hit = !recording && preview ? timelineHit(event) : null;
+  timeline.style.cursor = hit?.mode === 'move' ? 'grab' : hit?.mode === 'scrub' ? 'col-resize' : hit ? 'ew-resize' : 'default';
+});
+timeline.onpointerup = run(async event => {
+  if (!timelineDrag || event.pointerId !== timelineDrag.pointerId) return;
+  timelineDrag.pointer = event; timelineDrag.pending = true;
+  try { updateTimelineDrag(); } catch (e) { cancelTimelineDrag(); throw e; }
+  const d = timelineDrag; timelineDrag = null; timeline.style.cursor = 'default';
   try {
-    if (d.moved) edit('拖动音乐时间', p => {
-      const action = d.chart.actions.find(a => a.id === d.id);
-      if (action) setCameraTiming(p.chart, d.id, { tick: action.tick });
-      else { p.chart = d.chart; updateTouches(p.chart); }
-    });
+    if (d.gesture.mode === 'scrub') { await publishTransport(true); renderProperties(); setStatus(`已定位 ${audio.now().toFixed(3)} 秒`); }
+    else if (d.result?.changed) {
+      edit(d.gesture.mode === 'move' ? '移动时间范围' : '拉伸时间范围', p => commitTimelineGesture(p.chart, d.gesture, d.result));
+      setStatus(`已更新 ${d.gesture.id} · ${d.result.start} → ${d.result.end} tick；Ctrl+Z 可撤销`);
+    }
   } finally { refresh(); }
 });
-timeline.onpointercancel = () => { timelineDrag = null; refresh(); };
-$('zoom').oninput = resizeTimeline;
+timeline.onpointercancel = cancelTimelineDrag;
+timeline.onlostpointercapture = cancelTimelineDrag;
+timeline.onpointerleave = () => { if (!timelineDrag) timeline.style.cursor = 'default'; };
+timeline.onkeydown = run(async event => {
+  if (!['ArrowLeft', 'ArrowRight'].includes(event.key) || recording || !timelineLayout || timelineDrag) return;
+  event.preventDefault(); const map = timelineLayout.map, delta = gridStep(Number($('grid').value)) * (event.key === 'ArrowLeft' ? -1 : 1);
+  await seek(map.tickToSeconds(Math.max(0, map.secondsToTick(audio.now()) + delta)));
+});
+$('zoom').oninput = () => { if (timelineDrag) cancelTimelineDrag(); resizeTimeline(); };
 for (const id of ['loop', 'loop-a', 'loop-b']) $(id).onchange = () => {
   const a = Number($('loop-a').value), b = Number($('loop-b').value), enabled = $('loop').checked;
   if (a < 0 || b <= a || !Number.isFinite(a) || !Number.isFinite(b)) { setStatus('循环范围需要 0≤A<B'); return; }
   edit('修改 A/B 循环', p => p.loop = { enabled, a, b });
 };
 $('play').onclick = run(async () => {
+  if (timelineDrag) cancelTimelineDrag();
   if (recording) { await stopRecording(); return; }
   if (!preview) throw new Error('请先修复下方“校验”中的错误，再播放预览');
   if (audio.playing) { audio.pause(); await publishTransport(true); }
   else { await syncHostClock(); await audio.play(); $('layout').checked = false; await publishTransport(true); }
 });
 $('stop').onclick = run(async () => seek(0));
-$('undo').onclick = () => { if (!recording && history.undo()) { dirty = true; selected = null; refresh(); } };
-$('redo').onclick = () => { if (!recording && history.redo()) { dirty = true; selected = null; refresh(); } };
+$('undo').onclick = () => { if (timelineDrag) cancelTimelineDrag(); if (!recording && history.undo()) { dirty = true; selected = null; refresh(); } };
+$('redo').onclick = () => { if (timelineDrag) cancelTimelineDrag(); if (!recording && history.redo()) { dirty = true; selected = null; refresh(); } };
 $('delete').onclick = () => {
   if (!selected) return;
   edit('删除对象', p => { const n = p.chart.notes.find(x => x.id === selected); p.chart.notes = p.chart.notes.filter(x => x.id !== selected);
@@ -452,6 +537,7 @@ $('tablet').onclick = run(async () => {
 });
 $('address').onchange = () => { $('pair-url').value = $('address').value; setStatus('二维码对应首次显示地址；选择其他网卡时请复制完整地址到平板'); };
 $('record').onclick = run(async () => {
+  if (timelineDrag) cancelTimelineDrag();
   if (recording) { await stopRecording(); return; }
   if (!tabletInfo?.running) throw new Error('请先开启平板连接，并等待平板完成同步');
   if (issues.some(x => x.severity === 'error' && x.code !== 'E_EMPTY')) throw new Error('请先修复谱面校验错误');
@@ -484,14 +570,16 @@ api.onTablet(event => {
   }
 });
 document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && timelineDrag) { event.preventDefault(); cancelTimelineDrag(); return; }
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName) || $('confirm').open) return;
   const cmd = event.ctrlKey || event.metaKey;
   const action = cmd && event.key.toLowerCase() === 's' ? 'save' : cmd && event.key.toLowerCase() === 'z' ? event.shiftKey ? 'redo' : 'undo' :
     cmd && event.key.toLowerCase() === 'y' ? 'redo' : event.code === 'Space' ? 'play' : event.key === 'Delete' ? 'delete' : event.key.toLowerCase() === 'c' ? 'camera-add' : null;
-  if (action) { event.preventDefault(); $(action).click(); }
+  if (action) { event.preventDefault(); if (timelineDrag) cancelTimelineDrag(); $(action).click(); }
   else if (event.key === '1') selectTool('shrink'); else if (event.key === '2') selectTool('arrival'); else if (event.key.toLowerCase() === 'v') selectTool('select');
 });
 new ResizeObserver(() => { fitCanvas(stage); resizeTimeline(); if (history && !preview) drawValidationError(); }).observe(stage.parentElement);
+new ResizeObserver(resizeTimeline).observe($('timeline-scroll'));
 setInterval(run(async () => {
   if (!history || !dirty || history.revision === lastAutosaveRevision) return;
   await api.autosave(current()); lastAutosaveRevision = history.revision;
@@ -500,6 +588,14 @@ window.addEventListener('blur', () => { if (history && dirty) api.autosave(curre
 document.addEventListener('visibilitychange', run(async () => { if (document.hidden && audio.playing) { if (recording) await stopRecording(); else { audio.pause(); await publishTransport(true); } } }));
 function frame(now) {
   if (preview && history) {
+    if (timelineDrag) {
+      const scroll = $('timeline-scroll'), r = scroll.getBoundingClientRect(), x = timelineDrag.pointer.clientX;
+      const delta = !timelineDrag.movedPointer ? 0 : x < r.left + TIMELINE.origin + 18 ? -14 : x > r.right - 24 ? 14 : 0;
+      const before = scroll.scrollLeft;
+      if (delta) scroll.scrollLeft += delta;
+      if (before !== scroll.scrollLeft) timelineDrag.pending = true;
+      try { updateTimelineDrag(); } catch (e) { cancelTimelineDrag(); setStatus(e.message); }
+    }
     let song = audio.now();
     if (audio.playing && song >= audio.duration - .01) { if (recording) run(stopRecording)(); else { audio.pause(); publishTransport(true).catch(() => {}); } }
     const a = Number($('loop-a').value), b = Number($('loop-b').value);
@@ -527,9 +623,25 @@ try {
   fitCanvas(stage);
   drawStage(stage, preview, audio.now(), { layout: true });
   drawTimeline(audio.now());
+  let layoutEvidence, takeLayoutEvidence;
+  if (new URL(location.href).searchParams.get('verify') === '1') {
+    showPanel('actions');
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const { verifyLayout } = await import('./layout-verification.mjs');
+    layoutEvidence = verifyLayout(document, { innerHeight, devicePixelRatio });
+    // Synthetic card fixtures exercise wrapping; no captured/user Take is modified or persisted.
+    const originalTakes = current().takes;
+    current().takes = [{ id: 'layout-fixture', media: { name: '中文路径与很长的录入音乐名称-'.repeat(12) + '.wav' }, reason: 'interrupted', samples: [] }];
+    renderTakes(); showPanel('takes');
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    takeLayoutEvidence = verifyLayout(document, { innerHeight, devicePixelRatio });
+    current().takes = originalTakes; renderTakes();
+    showPanel('issues');
+  }
   await api.reportHealth({ status: 'ready', schemaVersion: chart().schemaVersion, noteCount: chart().notes.length,
     audioDuration: audio.duration, sampleRate: audio.buffer.sampleRate, stageWidth: stage.width, stageHeight: stage.height,
-    validationErrors: issues.filter(i => i.severity === 'error').length, nativeBridge: !!window.editorAPI, timestamp: new Date().toISOString() });
+    validationErrors: issues.filter(i => i.severity === 'error').length, nativeBridge: !!window.editorAPI,
+    ...(layoutEvidence ? { layout: layoutEvidence, takeLayout: takeLayoutEvidence } : {}), timestamp: new Date().toISOString() });
   requestAnimationFrame(frame);
 } catch (e) {
   setStatus(`启动失败：${e.message}`);

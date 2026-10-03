@@ -8,6 +8,7 @@ const root = __dirname;
 const verificationDir = process.argv.find(a => a.startsWith('--verification-dir='))?.slice('--verification-dir='.length);
 if (verificationDir && path.isAbsolute(verificationDir)) app.setPath('userData', verificationDir);
 const verification = process.argv.includes('--verify-startup');
+const verificationSize = verification ? process.argv.find(a => a.startsWith('--verification-size='))?.slice('--verification-size='.length).match(/^(\d{3,4})x(\d{3,4})$/) : null;
 const primaryInstance = app.requestSingleInstanceLock();
 if (!primaryInstance) app.quit();
 app.on('second-instance', () => { if (window) { window.show(); window.focus(); } });
@@ -37,7 +38,7 @@ app.whenReady().then(async () => {
     return net.fetch(pathToFileURL(file).toString());
   });
   session.defaultSession.setPermissionRequestHandler((_, __, callback) => callback(false));
-  window = new BrowserWindow({ width: 1540, height: 1000, minWidth: 1180, minHeight: 800, backgroundColor: '#10141e',
+  window = new BrowserWindow({ width: verificationSize ? Number(verificationSize[1]) : 1540, height: verificationSize ? Number(verificationSize[2]) : 1000, minWidth: 1180, minHeight: 800, backgroundColor: '#10141e',
     title: 'Ring Chart Editor', autoHideMenuBar: true,
     webPreferences: { preload: path.join(root, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -127,7 +128,7 @@ app.whenReady().then(async () => {
     if (result.canceled) return null;
     await serializedWrite(() => atomicWrite(result.filePath, text)); return result.filePath;
   });
-  await window.loadURL('ring-editor://app/src/ui/index.html');
+  await window.loadURL('ring-editor://app/src/ui/index.html' + (verification ? '?verify=1' : ''));
   let closing = false;
   const finishClose = () => host.stop().then(() => writeQueue).finally(() => window.destroy());
   ipcMain.on('editor:close-ready', event => { if (event.sender === window.webContents && closing) finishClose(); });
