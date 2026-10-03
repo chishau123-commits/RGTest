@@ -1,0 +1,19 @@
+# Unity generated files and local debug artifacts (source and .meta stay tracked)
+/Library/
+/Temp/
+/Obj/
+/Logs/
+/UserSettings/
+/Builds/
+/.artifacts/
+/.toolsCache/
+.vs/
+*.csproj
+*.sln
+*.user
+*.pidb
+*.pdb
+*.mdb
+sysinfo.txt
+__pycache__/
+*.py[cod]

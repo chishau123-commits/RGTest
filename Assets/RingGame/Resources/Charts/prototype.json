@@ -1,0 +1,816 @@
+{
+  "schemaVersion": "prototype-ring-0",
+  "timebase": {
+    "ppq": 960,
+    "offsetUs": 0,
+    "tempos": [
+      {
+        "tick": 0,
+        "bpm": 120
+      },
+      {
+        "tick": 30720,
+        "bpm": 150
+      }
+    ]
+  },
+  "settings": {
+    "title": "Ring Lab / Original Metronome",
+    "requiredTouches": 3
+  },
+  "notes": [
+    {
+      "id": "n00-0",
+      "tick": 7680,
+      "spawnTick": 5760,
+      "motion": "shrink",
+      "target": {
+        "x": -35,
+        "y": 10
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n01-0",
+      "tick": 9600,
+      "spawnTick": 7680,
+      "motion": "arrival",
+      "target": {
+        "x": 30,
+        "y": -14
+      },
+      "radius": 6,
+      "pathId": "p-n01-0"
+    },
+    {
+      "id": "n02-0",
+      "tick": 11520,
+      "spawnTick": 9600,
+      "motion": "shrink",
+      "target": {
+        "x": 0,
+        "y": 20
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n03-0",
+      "tick": 13440,
+      "spawnTick": 11520,
+      "motion": "arrival",
+      "target": {
+        "x": -30,
+        "y": -18
+      },
+      "radius": 6,
+      "pathId": "p-n03-0"
+    },
+    {
+      "id": "n04-0",
+      "tick": 15360,
+      "spawnTick": 13440,
+      "motion": "shrink",
+      "target": {
+        "x": 35,
+        "y": 16
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n05-0",
+      "tick": 17280,
+      "spawnTick": 15360,
+      "motion": "arrival",
+      "target": {
+        "x": 0,
+        "y": -18
+      },
+      "radius": 6,
+      "pathId": "p-n05-0"
+    },
+    {
+      "id": "n06-0",
+      "tick": 19200,
+      "spawnTick": 17280,
+      "motion": "shrink",
+      "target": {
+        "x": -34,
+        "y": -12
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n06-1",
+      "tick": 19200,
+      "spawnTick": 17280,
+      "motion": "arrival",
+      "target": {
+        "x": 0,
+        "y": 17
+      },
+      "radius": 6,
+      "pathId": "p-n06-1"
+    },
+    {
+      "id": "n06-2",
+      "tick": 19200,
+      "spawnTick": 17280,
+      "motion": "shrink",
+      "target": {
+        "x": 34,
+        "y": -12
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n07-0",
+      "tick": 21120,
+      "spawnTick": 19200,
+      "motion": "arrival",
+      "target": {
+        "x": 30,
+        "y": -14
+      },
+      "radius": 6,
+      "pathId": "p-n07-0"
+    },
+    {
+      "id": "n08-0",
+      "tick": 23040,
+      "spawnTick": 21120,
+      "motion": "shrink",
+      "target": {
+        "x": 0,
+        "y": 20
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n09-0",
+      "tick": 24960,
+      "spawnTick": 23040,
+      "motion": "arrival",
+      "target": {
+        "x": -30,
+        "y": -18
+      },
+      "radius": 6,
+      "pathId": "p-n09-0"
+    },
+    {
+      "id": "n10-0",
+      "tick": 26880,
+      "spawnTick": 24960,
+      "motion": "shrink",
+      "target": {
+        "x": 35,
+        "y": 16
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n11-0",
+      "tick": 28800,
+      "spawnTick": 26880,
+      "motion": "arrival",
+      "target": {
+        "x": 0,
+        "y": -18
+      },
+      "radius": 6,
+      "pathId": "p-n11-0"
+    },
+    {
+      "id": "n12-0",
+      "tick": 30720,
+      "spawnTick": 28800,
+      "motion": "shrink",
+      "target": {
+        "x": -35,
+        "y": 10
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n13-0",
+      "tick": 32640,
+      "spawnTick": 30720,
+      "motion": "arrival",
+      "target": {
+        "x": 30,
+        "y": -14
+      },
+      "radius": 6,
+      "pathId": "p-n13-0"
+    },
+    {
+      "id": "n14-0",
+      "tick": 34560,
+      "spawnTick": 32640,
+      "motion": "shrink",
+      "target": {
+        "x": 0,
+        "y": 20
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n15-0",
+      "tick": 36480,
+      "spawnTick": 34560,
+      "motion": "arrival",
+      "target": {
+        "x": -30,
+        "y": -18
+      },
+      "radius": 6,
+      "pathId": "p-n15-0"
+    },
+    {
+      "id": "n16-0",
+      "tick": 38400,
+      "spawnTick": 36480,
+      "motion": "shrink",
+      "target": {
+        "x": 35,
+        "y": 16
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n17-0",
+      "tick": 40320,
+      "spawnTick": 38400,
+      "motion": "arrival",
+      "target": {
+        "x": 0,
+        "y": -18
+      },
+      "radius": 6,
+      "pathId": "p-n17-0"
+    },
+    {
+      "id": "n18-0",
+      "tick": 42240,
+      "spawnTick": 40320,
+      "motion": "shrink",
+      "target": {
+        "x": -34,
+        "y": -12
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n18-1",
+      "tick": 42240,
+      "spawnTick": 40320,
+      "motion": "arrival",
+      "target": {
+        "x": 0,
+        "y": 17
+      },
+      "radius": 6,
+      "pathId": "p-n18-1"
+    },
+    {
+      "id": "n18-2",
+      "tick": 42240,
+      "spawnTick": 40320,
+      "motion": "shrink",
+      "target": {
+        "x": 34,
+        "y": -12
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n19-0",
+      "tick": 44160,
+      "spawnTick": 42240,
+      "motion": "arrival",
+      "target": {
+        "x": 30,
+        "y": -14
+      },
+      "radius": 6,
+      "pathId": "p-n19-0"
+    },
+    {
+      "id": "n20-0",
+      "tick": 46080,
+      "spawnTick": 44160,
+      "motion": "shrink",
+      "target": {
+        "x": 0,
+        "y": 20
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n21-0",
+      "tick": 48000,
+      "spawnTick": 46080,
+      "motion": "arrival",
+      "target": {
+        "x": -30,
+        "y": -18
+      },
+      "radius": 6,
+      "pathId": "p-n21-0"
+    },
+    {
+      "id": "n22-0",
+      "tick": 49920,
+      "spawnTick": 48000,
+      "motion": "shrink",
+      "target": {
+        "x": 35,
+        "y": 16
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n23-0",
+      "tick": 51840,
+      "spawnTick": 49920,
+      "motion": "arrival",
+      "target": {
+        "x": 0,
+        "y": -18
+      },
+      "radius": 6,
+      "pathId": "p-n23-0"
+    },
+    {
+      "id": "n24-0",
+      "tick": 53760,
+      "spawnTick": 51840,
+      "motion": "shrink",
+      "target": {
+        "x": -35,
+        "y": 10
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n25-0",
+      "tick": 55680,
+      "spawnTick": 53760,
+      "motion": "arrival",
+      "target": {
+        "x": 30,
+        "y": -14
+      },
+      "radius": 6,
+      "pathId": "p-n25-0"
+    },
+    {
+      "id": "n26-0",
+      "tick": 57600,
+      "spawnTick": 55680,
+      "motion": "shrink",
+      "target": {
+        "x": -34,
+        "y": -12
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n26-1",
+      "tick": 57600,
+      "spawnTick": 55680,
+      "motion": "arrival",
+      "target": {
+        "x": 0,
+        "y": 17
+      },
+      "radius": 6,
+      "pathId": "p-n26-1"
+    },
+    {
+      "id": "n26-2",
+      "tick": 57600,
+      "spawnTick": 55680,
+      "motion": "shrink",
+      "target": {
+        "x": 34,
+        "y": -12
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n27-0",
+      "tick": 59520,
+      "spawnTick": 57600,
+      "motion": "arrival",
+      "target": {
+        "x": -30,
+        "y": -18
+      },
+      "radius": 6,
+      "pathId": "p-n27-0"
+    },
+    {
+      "id": "n28-0",
+      "tick": 61440,
+      "spawnTick": 59520,
+      "motion": "shrink",
+      "target": {
+        "x": 35,
+        "y": 16
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n29-0",
+      "tick": 63360,
+      "spawnTick": 61440,
+      "motion": "arrival",
+      "target": {
+        "x": 0,
+        "y": -18
+      },
+      "radius": 6,
+      "pathId": "p-n29-0"
+    },
+    {
+      "id": "n30-0",
+      "tick": 65280,
+      "spawnTick": 63360,
+      "motion": "shrink",
+      "target": {
+        "x": -35,
+        "y": 10
+      },
+      "radius": 6,
+      "pathId": ""
+    },
+    {
+      "id": "n31-0",
+      "tick": 67200,
+      "spawnTick": 65280,
+      "motion": "arrival",
+      "target": {
+        "x": 30,
+        "y": -14
+      },
+      "radius": 6,
+      "pathId": "p-n31-0"
+    }
+  ],
+  "paths": [
+    {
+      "id": "p-n01-0",
+      "type": "linear",
+      "start": {
+        "x": 6,
+        "y": 8
+      },
+      "end": {
+        "x": 30,
+        "y": -14
+      }
+    },
+    {
+      "id": "p-n03-0",
+      "type": "linear",
+      "start": {
+        "x": -6,
+        "y": 4
+      },
+      "end": {
+        "x": -30,
+        "y": -18
+      }
+    },
+    {
+      "id": "p-n05-0",
+      "type": "linear",
+      "start": {
+        "x": -24,
+        "y": 4
+      },
+      "end": {
+        "x": 0,
+        "y": -18
+      }
+    },
+    {
+      "id": "p-n06-1",
+      "type": "linear",
+      "start": {
+        "x": -24,
+        "y": 39
+      },
+      "end": {
+        "x": 0,
+        "y": 17
+      }
+    },
+    {
+      "id": "p-n07-0",
+      "type": "linear",
+      "start": {
+        "x": 6,
+        "y": 8
+      },
+      "end": {
+        "x": 30,
+        "y": -14
+      }
+    },
+    {
+      "id": "p-n09-0",
+      "type": "linear",
+      "start": {
+        "x": -6,
+        "y": 4
+      },
+      "end": {
+        "x": -30,
+        "y": -18
+      }
+    },
+    {
+      "id": "p-n11-0",
+      "type": "linear",
+      "start": {
+        "x": -24,
+        "y": 4
+      },
+      "end": {
+        "x": 0,
+        "y": -18
+      }
+    },
+    {
+      "id": "p-n13-0",
+      "type": "linear",
+      "start": {
+        "x": 6,
+        "y": 8
+      },
+      "end": {
+        "x": 30,
+        "y": -14
+      }
+    },
+    {
+      "id": "p-n15-0",
+      "type": "linear",
+      "start": {
+        "x": -6,
+        "y": 4
+      },
+      "end": {
+        "x": -30,
+        "y": -18
+      }
+    },
+    {
+      "id": "p-n17-0",
+      "type": "linear",
+      "start": {
+        "x": -24,
+        "y": 4
+      },
+      "end": {
+        "x": 0,
+        "y": -18
+      }
+    },
+    {
+      "id": "p-n18-1",
+      "type": "linear",
+      "start": {
+        "x": -24,
+        "y": 39
+      },
+      "end": {
+        "x": 0,
+        "y": 17
+      }
+    },
+    {
+      "id": "p-n19-0",
+      "type": "linear",
+      "start": {
+        "x": 6,
+        "y": 8
+      },
+      "end": {
+        "x": 30,
+        "y": -14
+      }
+    },
+    {
+      "id": "p-n21-0",
+      "type": "linear",
+      "start": {
+        "x": -6,
+        "y": 4
+      },
+      "end": {
+        "x": -30,
+        "y": -18
+      }
+    },
+    {
+      "id": "p-n23-0",
+      "type": "linear",
+      "start": {
+        "x": -24,
+        "y": 4
+      },
+      "end": {
+        "x": 0,
+        "y": -18
+      }
+    },
+    {
+      "id": "p-n25-0",
+      "type": "linear",
+      "start": {
+        "x": 6,
+        "y": 8
+      },
+      "end": {
+        "x": 30,
+        "y": -14
+      }
+    },
+    {
+      "id": "p-n26-1",
+      "type": "linear",
+      "start": {
+        "x": -24,
+        "y": 39
+      },
+      "end": {
+        "x": 0,
+        "y": 17
+      }
+    },
+    {
+      "id": "p-n27-0",
+      "type": "linear",
+      "start": {
+        "x": -6,
+        "y": 4
+      },
+      "end": {
+        "x": -30,
+        "y": -18
+      }
+    },
+    {
+      "id": "p-n29-0",
+      "type": "linear",
+      "start": {
+        "x": -24,
+        "y": 4
+      },
+      "end": {
+        "x": 0,
+        "y": -18
+      }
+    },
+    {
+      "id": "p-n31-0",
+      "type": "linear",
+      "start": {
+        "x": 6,
+        "y": 8
+      },
+      "end": {
+        "x": 30,
+        "y": -14
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "cam-0",
+      "eventType": "MoveCamera",
+      "tick": 11520,
+      "durationTicks": 7680,
+      "position": {
+        "x": 9,
+        "y": -4
+      },
+      "rotation": 24,
+      "scale": 1.06,
+      "ease": "smooth"
+    },
+    {
+      "id": "cam-1",
+      "eventType": "MoveCamera",
+      "tick": 19200,
+      "durationTicks": 7680,
+      "position": {
+        "x": -8,
+        "y": 4
+      },
+      "rotation": -25,
+      "scale": 0.9,
+      "ease": "smooth"
+    },
+    {
+      "id": "cam-2",
+      "eventType": "MoveCamera",
+      "tick": 26880,
+      "durationTicks": 7680,
+      "position": {
+        "x": 6,
+        "y": 1
+      },
+      "rotation": 18,
+      "scale": 1.04,
+      "ease": "smooth"
+    },
+    {
+      "id": "cam-3",
+      "eventType": "MoveCamera",
+      "tick": 34560,
+      "durationTicks": 7680,
+      "position": {
+        "x": -6,
+        "y": -3
+      },
+      "rotation": -22,
+      "scale": 0.92,
+      "ease": "smooth"
+    },
+    {
+      "id": "cam-4",
+      "eventType": "MoveCamera",
+      "tick": 42240,
+      "durationTicks": 7680,
+      "position": {
+        "x": 8,
+        "y": 2
+      },
+      "rotation": 27,
+      "scale": 1.02,
+      "ease": "smooth"
+    },
+    {
+      "id": "cam-5",
+      "eventType": "MoveCamera",
+      "tick": 49920,
+      "durationTicks": 7680,
+      "position": {
+        "x": -7,
+        "y": 4
+      },
+      "rotation": -20,
+      "scale": 0.9,
+      "ease": "smooth"
+    },
+    {
+      "id": "cam-6",
+      "eventType": "MoveCamera",
+      "tick": 57600,
+      "durationTicks": 7680,
+      "position": {
+        "x": 5,
+        "y": -2
+      },
+      "rotation": 15,
+      "scale": 1.0,
+      "ease": "smooth"
+    },
+    {
+      "id": "cam-7",
+      "eventType": "MoveCamera",
+      "tick": 65280,
+      "durationTicks": 7680,
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "rotation": 0,
+      "scale": 1.0,
+      "ease": "smooth"
+    }
+  ],
+  "decorations": []
+}

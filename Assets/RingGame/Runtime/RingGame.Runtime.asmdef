@@ -1,0 +1,6 @@
+{
+  "name": "RingGame.Runtime",
+  "rootNamespace": "RingGame.Runtime",
+  "references": ["RingGame.Core", "Unity.InputSystem", "Unity.ugui"],
+  "autoReferenced": true
+}
