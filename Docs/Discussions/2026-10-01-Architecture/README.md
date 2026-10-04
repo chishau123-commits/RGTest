@@ -12,7 +12,7 @@
 
 这一轮的术语与决定都属于协议，所以写在独立仓库 **rg-protocol**（`LingXuanYin/rg-protocol`，私有，需要授权才能读）：术语表在它的 `CONTEXT.md`，第 1b 节的裁定写成了它的 ADR-0001 至 0005。本仓库的 `CONTEXT.md` 与 `Docs/adr/` 没有改动。第 5 节把与 Unity 有关的部分单独写清楚，读不到 rg-protocol 也能看懂。
 
-本次也没有改动 `Docs/VideoBgaBranchingPlan.md`；它是否被取代，取决于分支拓扑的裁定（见第 4 节）。
+本次也没有改动 `Docs/VideoBgaBranchingPlan.md`；它描述的等长汇流是 rg-protocol ADR-0008 里「等长由内容自己声明」的一个特例，因此**不被取代**（见第 4 节）。
 
 ## 0. 来源
 
@@ -132,7 +132,8 @@
 
 ### 时间与分支
 
-- **段落之间怎么连。** 白板的「创建『创建分支』的规则，而不是创建分支」允许各臂不等长；本仓库 `CONTEXT.md` 的**汇流**要求所有臂在同一个 tick 回到主线、不累积历史。两者是不同的拓扑，Q25 的时间模型按前者定。孰为准尚未裁定；`Docs/VideoBgaBranchingPlan.md` 是否被取代也取决于这条。
+- **段落之间怎么连。** 白板的「创建『创建分支』的规则，而不是创建分支」允许各臂不等长；本仓库 `CONTEXT.md` 的**汇流**要求所有臂在同一个 tick 回到主线、不累积历史。两者是不同的拓扑，Q25 的时间模型按前者定。
+  **已裁定（2026-10-04）**：段落图是 DAG、各臂可以不等长，等长由内容自己声明——rg-protocol 的 [ADR-0008](https://github.com/LingXuanYin/rg-protocol/blob/main/docs/adr/0008-segment-graph-allows-unequal-arms.md)。本仓库的**汇流**是等长的一个特例，没有被推翻；`Docs/VideoBgaBranchingPlan.md` 因此**不被取代**，它描述的等长汇流属于这一特例。图的分叉条件怎么写仍未定。
 - **时间单位**：rg-protocol 的 v0 草案按秒计；要不要改用拍，拍网格（tempo map）要不要进协议。
 
 ### 展示与宿主
