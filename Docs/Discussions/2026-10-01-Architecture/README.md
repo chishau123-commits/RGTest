@@ -42,25 +42,22 @@
 14. **旧谱面、旧协议一律不兼容，完全从头来。** 为了验收可以扩展开发边界，例如建参考宿主、测试件。
 15. **原型指 bgv-chartgen 存档分支里的「成品」**：实时渲染的程序（参考骨架在浏览器端，可测接口 `chartgen-test/1` 走 WebSocket）。它的谱面描述 `chartgen-chart/1` 是与媒介无关的游戏事件数据，动作由成品自己定义、没有枚举。出处：存档分支 `archive/2026-10-01` 的 `docs/adr/0001-0003`、`docs/chart-description.md`、`docs/test-interface.md`。
 
-## 1b. 后续裁定（2026-10-03）
+## 1b. 后续裁定（2026-10-03、2026-10-04）
 
-下面是同一轮讨论在 10-03 逐条**拍定**的结论，编号沿用讨论时的 Q 号。每条都记了问的是什么、答的是什么、为什么这么答；括号里是 rg-protocol 里对应的 ADR。
+下面是同一轮讨论逐条**拍定**的结论，编号沿用讨论时的 Q 号。**理由只写在 rg-protocol 的 ADR 里，这里只留一道指针**：改裁定先改 ADR，再回来看这张表要不要跟着动。本仓库读者真正需要复述的，是第 5 节「协议对 Unity 宿主的要求」。
 
-### 载体与宿主
-
-- **Q19 计分**：成绩有**分数上限**，由每个游戏事件的判定**反算**，不做逐事件累加。（计分属于核心类型，等核心类型设计时一起写成 ADR。）
-- **Q20 内嵌代码的载体**：**不绑语言，绑接口。**（1）不强制任何跨宿主的代码运行时（wasm 已否决）；（2）协议只规定代码载荷的**接口与规范**，不规定**载体**：接口以 `chartgen-test/1` 为底子——输入是 `t`、输入记录、表现通道，输出是画面、元素状态、判定，必须可 seek、必须声明能力、必须给出降级方案；（3）代码载荷**可在生产侧执行**，Unity 只播降级后的结果。引 wasm 的初衷是「游玩时画面随输入挪 Note」，原型里没有这个需求，故撤回。（协议 ADR-0001）
-- **成品是 Unity app**（不是浏览器）。由此推出：**凡是要对游戏事件起反应的画面，必须由宿主实时渲染；只有永远不起反应的画面才允许烘焙成视频。** 整段烘焙成视频，会让「游戏事件 → 展示层」的影响做不了。（协议 ADR-0005）
-- **Q22 / Q23 归内容生产侧**：烘焙多少、留多少实时响应、agent 走 (a)「自由写程序再转换」还是 (b)「直接写协议场景格式」，都是创作决定，不由协议层规定。协议层要提供的是**选项**（有哪些原语、能怎么组合）与**代价表**。（rg-protocol `docs/scope.md`）
-
-### 结构
-
-- **Q24 自举**：分三层，**L1 与 L2 都进 v1**（L2 由 owner 否决了「以后再做」的建议），**L3 暂不定、可后加**。
-  - **L1 类型自描述**：每种类型带自己的 schema 与版本；内容声明用到了哪些类型、其中哪些是**必须支持的**；不认识的类型与字段**原样保留、无损往返**。（协议 ADR-0001、0002）
-  - **L2 模板**：内容可以用已有类型定义**带参数的新类型**。护栏：不递归；参数只能是常量或对已声明字段的引用，不能是表达式；禁依赖环；模板定义与**展开后的结果同时入包**，不认识模板的宿主直接读展开结果。（协议 ADR-0003）
-  - **L3 新原语**：宿主本来做不到的事，数据造不出来，只能等宿主实现并声明为能力。v1 为此留四个字段位：未知类型保留、能力声明（用到 / 必须）、每元素降级引用、版本。（协议 ADR-0001）
-- **Q25 时间寻址**：**段落 id + 段内时间**，不用全曲全局秒数。理由是分支各臂可能不等长，汇流点之后的全局秒数在不同路径上不同；先全局、后改会违反「协议不因内容变好而改格式」。时间容器的名字定为「段落」，与本仓库的「玩法段」「区段」都不是一回事。（协议 ADR-0004）
-- **Q14 人的修改**：**只标注，不做三方合并。** owner 的理由是既然用了 agent，就接受 agent 会自己改。配套只有一条：agent 重新生成时要**逐条回应**被标注的元素（采纳或说明理由），否则白板上「人的反馈 → agent」这条回路会静默断裂。这条回应纪律写在 bgv-chartgen 的 skill 里，不写进协议。（协议 ADR-0003）
+| Q | 答的是什么 | 归属 |
+|---|---|---|
+| Q19 计分 | 成绩有**分数上限**，由每个游戏事件的判定**反算**，不做逐事件累加 | 计分属核心类型，未写成 ADR；受 ADR-0008 的路径上限影响 |
+| Q20 内嵌代码的载体 | **不绑语言，绑接口**；不引入跨宿主的代码运行时（wasm 已否决）；接口以 `chartgen-test/1` 为底子；载荷可在生产侧执行，Unity 只播降级结果 | 协议 [ADR-0001](https://github.com/LingXuanYin/rg-protocol/blob/main/docs/adr/0001-protocol-exchanges-data-not-runtimes.md) |
+| 成品是 Unity app | 会对游戏事件起反应的画面必须由宿主实时渲染；只有永远不起反应的才允许烘焙成视频 | 协议 [ADR-0005](https://github.com/LingXuanYin/rg-protocol/blob/main/docs/adr/0005-reactive-presentation-is-data-rendered-live.md) |
+| Q22 / Q23 | 烘焙多少、留多少实时响应、agent 先写程序还是直接写场景格式，都归内容生产侧；协议层只给**选项**与**代价表** | rg-protocol `docs/scope.md` |
+| Q24 自举 | 分三层，**L1 与 L2 都进 v1**，L3 暂不定、可后加 | 协议 ADR-0001、0002、0003 |
+| Q25 时间寻址 | **段落 id + 段内时间**，不用全曲全局秒数；容器定名「段落」，与本仓库的「玩法段」「区段」无关 | 协议 [ADR-0004](https://github.com/LingXuanYin/rg-protocol/blob/main/docs/adr/0004-time-is-addressed-by-segment.md)；单位由 [ADR-0006](https://github.com/LingXuanYin/rg-protocol/blob/main/docs/adr/0006-time-is-addressed-in-seconds.md) 钉成秒 |
+| Q14 人的修改 | **只标注，不做三方合并**；agent 重新生成时要**逐条回应**被标注的元素 | 协议 [ADR-0003](https://github.com/LingXuanYin/rg-protocol/blob/main/docs/adr/0003-elements-carry-stable-ids-and-origin.md)；回应纪律属 bgv-chartgen 的 skill |
+| 时间单位（10-04） | 段内时间**按秒**；拍值表是可选辅助，不参与寻址 | 协议 [ADR-0006](https://github.com/LingXuanYin/rg-protocol/blob/main/docs/adr/0006-time-is-addressed-in-seconds.md) |
+| 难度表示（10-04） | 难度是一等容器，按 id 引用元素；元素自己不带难度字段 | 协议 [ADR-0007](https://github.com/LingXuanYin/rg-protocol/blob/main/docs/adr/0007-difficulty-is-a-container-of-element-references.md) |
+| 段落拓扑（10-04） | 段落图是 DAG、各臂可不等长，等长由内容自己声明（**只是图的形状**；分叉条件、汇合规则、按路径算上限均未定） | 协议 [ADR-0008](https://github.com/LingXuanYin/rg-protocol/blob/main/docs/adr/0008-segment-graph-allows-unequal-arms.md) |
 
 ## 2. 白板转写
 
