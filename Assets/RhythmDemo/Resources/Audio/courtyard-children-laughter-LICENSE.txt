@@ -1,0 +1,12 @@
+Asset: courtyard-children-laughter.mp3
+Title: Laughter of Children (sound 1660)
+Author: Joseph SARDIN
+Source page: https://bigsoundbank.com/rires-d-enfants-s1660.html
+Original audio: https://bigsoundbank.com/UPLOAD/mp3/1660.mp3
+License: CC0 (public domain), as explicitly stated on the source page.
+Retrieved: 2026-09-30
+SHA-256: 339C6724A46A2F10B6B6983C47FA3517CA0E8CDECB279FEC47509C048F413868
+
+Two children performing laughter in front of a microphone; a staged recording,
+not a synthesized voice or a recording of this game's actors. The MP3 is unchanged.
+The game controls playback volume and stereo pan to follow the courtyard crossing.

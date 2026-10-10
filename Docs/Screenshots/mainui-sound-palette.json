@@ -1,0 +1,78 @@
+[
+  {
+    "time": 0.0,
+    "sound": "hover"
+  },
+  {
+    "time": 0.545,
+    "sound": "click"
+  },
+  {
+    "time": 1.155,
+    "sound": "select"
+  },
+  {
+    "time": 1.825,
+    "sound": "open"
+  },
+  {
+    "time": 2.655,
+    "sound": "close"
+  },
+  {
+    "time": 3.405,
+    "sound": "minimize"
+  },
+  {
+    "time": 4.105,
+    "sound": "restore"
+  },
+  {
+    "time": 4.875,
+    "sound": "confirm"
+  },
+  {
+    "time": 5.785,
+    "sound": "cancel"
+  },
+  {
+    "time": 6.505,
+    "sound": "like"
+  },
+  {
+    "time": 7.315,
+    "sound": "send"
+  },
+  {
+    "time": 8.165,
+    "sound": "error"
+  },
+  {
+    "time": 8.955,
+    "sound": "notification"
+  },
+  {
+    "time": 10.165,
+    "sound": "save"
+  },
+  {
+    "time": 11.465,
+    "sound": "login"
+  },
+  {
+    "time": 13.165,
+    "sound": "logout"
+  },
+  {
+    "time": 14.515,
+    "sound": "performance"
+  },
+  {
+    "time": 16.585,
+    "sound": "ready"
+  },
+  {
+    "time": 17.605,
+    "sound": "stage-start"
+  }
+]

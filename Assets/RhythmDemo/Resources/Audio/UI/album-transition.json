@@ -1,0 +1,14 @@
+[
+  {
+    "cue": "album-unfold",
+    "seconds": 2.04,
+    "peak_dbfs": -12.39577516576788,
+    "rms_dbfs": -28.44987983098847
+  },
+  {
+    "cue": "album-settle",
+    "seconds": 0.62,
+    "peak_dbfs": -15.917600346881503,
+    "rms_dbfs": -29.365833641320563
+  }
+]

@@ -3,8 +3,7 @@ using UnityEngine.UI;
 
 namespace GeometryRhythm
 {
-    /// <summary>Title-screen-only artwork. It deliberately shares no background texture,
-    /// character layer, or lobby layout with the main interface.</summary>
+    /// <summary>Login-only pixel sky. Shares the desktop palette, with independent artwork.</summary>
     [RequireComponent(typeof(CanvasRenderer))]
     public sealed class CyberTitleGraphic : MaskableGraphic
     {
@@ -14,93 +13,95 @@ namespace GeometryRhythm
             return new Vector2(r.xMin+x*r.width/1600f,r.yMax-y*r.height/900f);
         }
 
-        void Poly(VertexHelper v,Color color,params float[] xy)
+        void Block(VertexHelper v,float x,float y,float width,float height,Color color)
         {
-            var points=new Vector2[xy.Length/2];
-            for(int i=0;i<points.Length;i++)points[i]=P(xy[i*2],xy[i*2+1]);
-            CyberTheme.Polygon(v,points,color);
+            CyberTheme.Quad(v,P(x,y),P(x+width,y),P(x+width,y+height),P(x,y+height),color);
         }
 
-        void Line(VertexHelper v,float x1,float y1,float x2,float y2,Color color,float width=1)
+        void Spark(VertexHelper v,float x,float y,Color color)
         {
-            CyberTheme.Line(v,P(x1,y1),P(x2,y2),width,color);
+            Block(v,x+6,y,3,15,color);
+            Block(v,x,y+6,6,3,color);
+            Block(v,x+9,y+6,6,3,color);
         }
 
-        void Arc(VertexHelper v,float centerX,float centerY,float radius,float start,float end,float width,Color color)
+        void Bank(VertexHelper v,Color color,bool upper,params float[] edge)
         {
-            int count=Mathf.Max(2,Mathf.CeilToInt((end-start)/5f));
-            Vector2 center=P(centerX,centerY);
-            float scale=rectTransform.rect.height/900f;
-            for(int i=0;i<count;i++)
-            {
-                float a=Mathf.Lerp(start,end,i/(float)count);
-                float b=Mathf.Lerp(start,end,(i+1f)/count);
-                Vector2 pa=center+new Vector2(Mathf.Cos(a*Mathf.Deg2Rad),-Mathf.Sin(a*Mathf.Deg2Rad))*radius*scale;
-                Vector2 pb=center+new Vector2(Mathf.Cos(b*Mathf.Deg2Rad),-Mathf.Sin(b*Mathf.Deg2Rad))*radius*scale;
-                CyberTheme.Line(v,pa,pb,width,color);
-            }
+            // Disjoint rectangular strips keep concave stair silhouettes free of fan artifacts.
+            for(int i=0;i<edge.Length-2;i+=2)
+                Block(v,edge[i],upper?0:edge[i+1],edge[i+2]-edge[i],
+                    upper?edge[i+1]:900-edge[i+1],color);
+        }
+
+        void Signal(VertexHelper v,Color color,params float[] xy)
+        {
+            for(int i=2;i<xy.Length;i+=2)
+                Block(v,Mathf.Min(xy[i-2],xy[i]),Mathf.Min(xy[i-1],xy[i+1]),
+                    Mathf.Max(3,Mathf.Abs(xy[i]-xy[i-2])),Mathf.Max(3,Mathf.Abs(xy[i+1]-xy[i-1])),color);
+            Block(v,xy[xy.Length-2]-3,xy[xy.Length-1]-3,9,9,color);
         }
 
         protected override void OnPopulateMesh(VertexHelper v)
         {
             v.Clear();
+            v.AddVert(P(0,0),new Color(.76f,.73f,.91f),Vector2.zero);
+            v.AddVert(P(1600,0),new Color(.69f,.65f,.86f),Vector2.zero);
+            v.AddVert(P(1600,900),new Color(.88f,.82f,.95f),Vector2.zero);
+            v.AddVert(P(0,900),new Color(.84f,.86f,.97f),Vector2.zero);
+            v.AddTriangle(0,1,2);v.AddTriangle(0,2,3);
 
-            // A restrained vertical print field replaces the character-photo lobby backdrop.
-            int start=v.currentVertCount;
-            v.AddVert(P(0,0),new Color(.018f,.024f,.038f),Vector2.zero);
-            v.AddVert(P(1600,0),new Color(.032f,.016f,.028f),Vector2.zero);
-            v.AddVert(P(1600,900),new Color(.010f,.012f,.022f),Vector2.zero);
-            v.AddVert(P(0,900),new Color(.008f,.010f,.018f),Vector2.zero);
-            v.AddTriangle(start,start+1,start+2);v.AddTriangle(start,start+2,start+3);
+            // Pixel cloud banks frame the quiet product and account area.
+            Bank(v,new Color(.91f,.87f,1f,.55f),true,
+                0,156,144,126,336,96,516,66,672,36,816,0);
+            Block(v,1512,72,88,24,new Color(.97f,.91f,1f,.33f));
+            Block(v,1374,96,226,24,new Color(.97f,.91f,1f,.33f));
+            Block(v,1236,120,364,24,new Color(.97f,.91f,1f,.33f));
+            Block(v,1128,144,472,24,new Color(.97f,.91f,1f,.33f));
+            Block(v,1056,168,544,18,new Color(.97f,.91f,1f,.33f));
+            Block(v,1128,168,472,3,new Color(1f,.94f,1f,.23f));
 
-            // Broad oversized slashes create a title identity unrelated to the lobby stage.
-            Poly(v,new Color(.05f,.48f,.54f,.20f),770,900,1010,900,545,0,305,0);
-            Poly(v,new Color(.72f,.12f,.34f,.15f),1025,900,1105,900,640,0,560,0);
-            Poly(v,new Color(.55f,.40f,.98f,.10f),1325,900,1600,900,1600,238,1425,314);
-            Poly(v,new Color(.015f,.025f,.047f,.94f),1110,0,1600,0,1600,900,1200,900);
+            Color blue=new Color(.74f,.88f,.96f,.46f);
+            Block(v,0,330,42,24,blue);Block(v,0,354,90,36,blue);
+            Block(v,0,390,132,42,blue);Block(v,0,432,174,42,blue);
+            Block(v,0,474,210,54,blue);Block(v,0,528,174,24,blue);
+            Color rose=new Color(.96f,.77f,.89f,.37f);
+            Block(v,1540,378,60,42,rose);Block(v,1504,420,96,48,rose);
+            Block(v,1474,468,126,72,rose);Block(v,1444,540,156,54,rose);
+            Block(v,1474,594,126,30,rose);
 
-            // Fine registration lines and staggered type blocks.
-            Color faint=CyberTheme.Alpha(CyberTheme.Text,.055f);
-            for(int i=0;i<18;i++)Line(v,0,88+i*47,1600,88+i*47,faint,1);
-            for(int i=0;i<12;i++)Line(v,1090+i*44,0,1090+i*44,900,CyberTheme.Alpha(CyberTheme.Cyan,.035f),1);
-            Line(v,1100,0,1100,900,CyberTheme.Alpha(CyberTheme.Cyan,.28f),2);
-            Line(v,1106,0,1106,900,CyberTheme.Alpha(CyberTheme.Pink,.16f),1);
+            // Three stepped horizons replace the desktop's circles and all-over grid.
+            Bank(v,new Color(.65f,.65f,.86f,.22f),false,
+                0,672,96,696,240,720,444,744,642,768,984,744,1176,714,
+                1356,678,1488,642,1600,642);
+            Bank(v,new Color(.75f,.71f,.91f,.54f),false,
+                0,732,144,750,318,774,522,798,936,780,1128,756,
+                1332,726,1488,702,1600,702);
+            Bank(v,new Color(.60f,.55f,.79f,.18f),false,
+                0,786,180,804,420,822,1140,804,1350,780,1488,762,1600,762);
 
-            // Broken rings suggest a signal being traced without reusing the main-menu halo.
-            Arc(v,1305,406,315,204,356,3,CyberTheme.Alpha(CyberTheme.Cyan,.28f));
-            Arc(v,1305,406,342,192,331,1,CyberTheme.Alpha(CyberTheme.Text,.14f));
-            Arc(v,1305,406,381,222,326,7,CyberTheme.Alpha(CyberTheme.Pink,.18f));
-            Arc(v,1305,406,410,202,275,2,CyberTheme.Alpha(CyberTheme.Purple,.24f));
-            for(int i=0;i<15;i++)
+            // Fixed, sparse dither clusters keep the cloud texture understated.
+            Color dither=new Color(.96f,.94f,1f,.27f);
+            for(int i=0;i<25;i++)
             {
-                float a=204+i*10.7f;
-                float inner=i%4==0?349:361;
-                float outer=i%4==0?373:382;
-                Line(v,1305+Mathf.Cos(a*Mathf.Deg2Rad)*inner,406-Mathf.Sin(a*Mathf.Deg2Rad)*inner,
-                    1305+Mathf.Cos(a*Mathf.Deg2Rad)*outer,406-Mathf.Sin(a*Mathf.Deg2Rad)*outer,
-                    i%4==0?CyberTheme.Alpha(CyberTheme.Cyan,.46f):CyberTheme.Alpha(CyberTheme.Purple,.28f),2);
+                float x=24+i*66,y=744+(i%5)*12;
+                Block(v,x,y,3,3,dither);Block(v,x+6,y+6,3,3,dither);
+                if(i%3==0)Block(v,x+12,y,3,3,dither);
             }
-            Poly(v,CyberTheme.Alpha(CyberTheme.Pink,.12f),1128,343,1240,343,1174,468,1088,468);
-            Poly(v,CyberTheme.Alpha(CyberTheme.Cyan,.12f),1176,365,1312,365,1232,485,1110,485);
 
-            // Barcode, hard cuts, and terminal-like status rails.
-            for(int i=0;i<28;i++)
-            {
-                float x=1190+i*13;
-                Line(v,x,626,x,674,i%3==0?CyberTheme.Alpha(CyberTheme.Text,.65f):CyberTheme.Alpha(CyberTheme.Cyan,.34f),i%5==0?5:2);
-            }
-            Line(v,1128,716,1544,716,CyberTheme.Alpha(CyberTheme.Cyan,.28f),2);
-            for(int i=0;i<9;i++)Line(v,1128+i*52,716,1152+i*52,742,CyberTheme.Alpha(CyberTheme.Pink,.38f),3);
-            Poly(v,CyberTheme.Alpha(CyberTheme.Cyan,.16f),1430,760,1588,760,1544,786,1386,786);
-            Poly(v,CyberTheme.Alpha(CyberTheme.Pink,.18f),1380,792,1515,792,1488,812,1352,812);
-            Line(v,42,806,1014,806,CyberTheme.Alpha(CyberTheme.Cyan,.13f),1);
-            Line(v,42,812,720,812,CyberTheme.Alpha(CyberTheme.Pink,.10f),1);
+            Signal(v,new Color(.49f,.39f,.73f,.22f),0,210,84,210,84,186,240,186);
+            Signal(v,new Color(.97f,.94f,1f,.42f),0,222,96,222,96,198,216,198);
+            Signal(v,new Color(.49f,.39f,.73f,.22f),1600,252,1518,252,1518,216,1440,216);
+            Signal(v,new Color(.96f,.92f,1f,.48f),1600,738,1542,738,1542,768,1392,768);
+            Signal(v,new Color(.44f,.47f,.73f,.22f),0,696,60,696,60,732,162,732);
 
-            // Sparse corner calibration marks keep the frame readable at different aspect ratios.
-            Line(v,38,38,142,38,CyberTheme.Alpha(CyberTheme.Cyan,.42f),2);
-            Line(v,38,38,38,118,CyberTheme.Alpha(CyberTheme.Cyan,.42f),2);
-            Line(v,1562,862,1458,862,CyberTheme.Alpha(CyberTheme.Pink,.42f),2);
-            Line(v,1562,862,1562,782,CyberTheme.Alpha(CyberTheme.Pink,.42f),2);
+            Spark(v,276,224,new Color(.99f,.96f,1f,.78f));
+            Spark(v,636,342,new Color(.98f,.95f,1f,.66f));
+            Spark(v,696,126,new Color(.91f,.96f,1f,.62f));
+            Spark(v,986,102,new Color(.98f,.94f,1f,.60f));
+            Spark(v,1494,324,new Color(.97f,.94f,1f,.70f));
+            Block(v,600,198,6,6,new Color(.48f,.36f,.73f,.26f));
+            Block(v,570,222,3,3,new Color(.48f,.36f,.73f,.26f));
+            Block(v,1476,156,6,6,new Color(.97f,.91f,1f,.54f));
         }
     }
 }

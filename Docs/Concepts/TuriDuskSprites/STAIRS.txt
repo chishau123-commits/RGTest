@@ -1,0 +1,2 @@
+Stairs: 4 front/down + 4 back/up frames, 6 fps. Atlas 192x128, cells 48x64.
+Top row down, bottom row up. Feet baseline y=60. Original horizontal animations unchanged.

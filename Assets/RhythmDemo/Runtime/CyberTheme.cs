@@ -15,12 +15,13 @@ namespace GeometryRhythm
         public static readonly Color Pink=new Color(1f,.35f,.57f);
         public static readonly Color Text=new Color(.90f,.95f,1f);
         public static readonly Color Muted=new Color(.44f,.59f,.69f);
-        static Font bold,regular,mono,chinese,futureTitle;
+        static Font bold,regular,mono,chinese,futureTitle,pixel;
         public static Font Bold => bold!=null?bold:bold=Load("Rajdhani-Bold");
         public static Font Regular => regular!=null?regular:regular=Load("Rajdhani-Medium");
         public static Font Mono => mono!=null?mono:mono=Load("ShareTechMono-Regular");
         public static Font Chinese => chinese!=null?chinese:chinese=LoadChinese();
         public static Font FutureTitle => futureTitle!=null?futureTitle:futureTitle=LoadFutureTitle();
+        public static Font Pixel => pixel!=null?pixel:pixel=Load("FusionPixel-12px");
         static Font Load(string name) => Resources.Load<Font>("Fonts/"+name)??Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         static Font LoadChinese()
         {

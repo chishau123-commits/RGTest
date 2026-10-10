@@ -42,7 +42,10 @@ namespace GeometryRhythm
         DemoHud hud;
         Transform notesRoot;
         Transform pathRoot;
-        bool menuMode, waitForPointerRelease;
+        bool menuMode, waitForPointerRelease, menuRenderingEnabled=true;
+        bool cameraRenderStateCached;
+        int normalCameraCullingMask;
+        CameraClearFlags normalCameraClearFlags;
         readonly Stack<NoteVisual> pool=new Stack<NoteVisual>();
         readonly Dictionary<string,PathVisual> paths=new Dictionary<string,PathVisual>();
         readonly HashSet<int> uiPointers=new HashSet<int>();
@@ -140,6 +143,7 @@ namespace GeometryRhythm
             if(!Ready) return;
             if(menuMode)
             {
+                if(!menuRenderingEnabled)return;
                 // Menus reuse the actual 3D environment, without advancing a chart or audio.
                 double preview=Math.Min(Duration*.4,8)+Math.Sin(Time.unscaledTimeAsDouble*.08)*1.2;
                 Spatial.EvaluateCamera(demoCamera,preview);stage.Evaluate(preview,tempo.BeatAtSeconds(preview));
@@ -262,11 +266,54 @@ namespace GeometryRhythm
         public void SetMenuMode(bool menu)
         {
             menuMode=menu;
+            if(!menu)
+            {
+                menuRenderingEnabled=true;
+                RestoreMenuCamera();
+            }
             if(!Ready) return;
             if(menu) clock.SetPaused(true);
             hud.SetVisible(!menu);notesRoot.gameObject.SetActive(!menu);pathRoot.gameObject.SetActive(!menu);
             foreach(var pulse in pulses) pulse.Transform.gameObject.SetActive(false);
             contacts.Clear();downs.Clear();uiPointers.Clear();waitForPointerRelease=true;
+        }
+
+        public void SetMenuBackdropRendering(bool active)
+        {
+            menuRenderingEnabled=active;
+            if(demoCamera==null)return;
+            if(!cameraRenderStateCached)
+            {
+                normalCameraCullingMask=demoCamera.cullingMask;
+                normalCameraClearFlags=demoCamera.clearFlags;
+                cameraRenderStateCached=true;
+            }
+            demoCamera.enabled=true;
+            if(active)
+            {
+                demoCamera.cullingMask=normalCameraCullingMask;
+                demoCamera.clearFlags=normalCameraClearFlags;
+            }
+            else
+            {
+                demoCamera.cullingMask=0;
+                demoCamera.clearFlags=CameraClearFlags.SolidColor;
+                demoCamera.backgroundColor=new Color(0,0,0,1);
+            }
+        }
+
+        void RestoreMenuCamera()
+        {
+            if(demoCamera==null)return;
+            if(!cameraRenderStateCached)
+            {
+                normalCameraCullingMask=demoCamera.cullingMask;
+                normalCameraClearFlags=demoCamera.clearFlags;
+                cameraRenderStateCached=true;
+            }
+            demoCamera.enabled=true;
+            demoCamera.cullingMask=normalCameraCullingMask;
+            demoCamera.clearFlags=normalCameraClearFlags;
         }
         public void BeginRun(bool automatic)
         {

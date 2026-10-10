@@ -8,6 +8,7 @@ namespace GeometryRhythm.StoryEditor
     {
         const string StoryAssetRoot = "Assets/RhythmDemo/StoryData/Assets/";
         const string RuntimeStoryRoot = "Assets/RhythmDemo/Resources/Story/";
+        const string TuriArtRoot = "Assets/RhythmDemo/Resources/Characters/Turi/";
         const string ImportVersionKey = "RhythmHacker.StoryTextureImport.V2";
 
         [InitializeOnLoadMethod]
@@ -26,14 +27,15 @@ namespace GeometryRhythm.StoryEditor
 
         void OnPreprocessTexture()
         {
+            bool turiArt = assetPath.StartsWith(TuriArtRoot, System.StringComparison.Ordinal);
             if (!assetPath.StartsWith(StoryAssetRoot, System.StringComparison.Ordinal) &&
-                !assetPath.StartsWith(RuntimeStoryRoot, System.StringComparison.Ordinal)) return;
+                !assetPath.StartsWith(RuntimeStoryRoot, System.StringComparison.Ordinal) && !turiArt) return;
             var importer = (TextureImporter)assetImporter;
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Single;
             importer.alphaIsTransparency = true;
             importer.mipmapEnabled = false;
-            importer.filterMode = FilterMode.Bilinear;
+            importer.filterMode = turiArt ? FilterMode.Point : FilterMode.Bilinear;
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.maxTextureSize = 4096;
             importer.textureCompression = TextureImporterCompression.Uncompressed;

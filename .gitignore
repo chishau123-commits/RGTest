@@ -8,3 +8,5 @@
 *.apk
 /.validation/
 /Builds/
+/.tmp/
+/1

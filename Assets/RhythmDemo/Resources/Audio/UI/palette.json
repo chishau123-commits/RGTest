@@ -1,0 +1,152 @@
+[
+  {
+    "name": "hover",
+    "seconds": 0.095,
+    "peak_dbfs": -29.12,
+    "rms_dbfs": -42.92
+  },
+  {
+    "name": "click",
+    "seconds": 0.16,
+    "peak_dbfs": -19.17,
+    "rms_dbfs": -33.49
+  },
+  {
+    "name": "select",
+    "seconds": 0.22,
+    "peak_dbfs": -18.42,
+    "rms_dbfs": -33.26
+  },
+  {
+    "name": "open",
+    "seconds": 0.38,
+    "peak_dbfs": -16.48,
+    "rms_dbfs": -30.17
+  },
+  {
+    "name": "close",
+    "seconds": 0.3,
+    "peak_dbfs": -17.72,
+    "rms_dbfs": -31.09
+  },
+  {
+    "name": "minimize",
+    "seconds": 0.25,
+    "peak_dbfs": -18.42,
+    "rms_dbfs": -30.65
+  },
+  {
+    "name": "restore",
+    "seconds": 0.32,
+    "peak_dbfs": -16.48,
+    "rms_dbfs": -30.2
+  },
+  {
+    "name": "confirm",
+    "seconds": 0.46,
+    "peak_dbfs": -16.48,
+    "rms_dbfs": -29.82
+  },
+  {
+    "name": "cancel",
+    "seconds": 0.27,
+    "peak_dbfs": -18.42,
+    "rms_dbfs": -31.88
+  },
+  {
+    "name": "like",
+    "seconds": 0.36,
+    "peak_dbfs": -17.08,
+    "rms_dbfs": -31.14
+  },
+  {
+    "name": "send",
+    "seconds": 0.4,
+    "peak_dbfs": -16.48,
+    "rms_dbfs": -30.39
+  },
+  {
+    "name": "error",
+    "seconds": 0.34,
+    "peak_dbfs": -17.08,
+    "rms_dbfs": -30.59
+  },
+  {
+    "name": "notification",
+    "seconds": 0.76,
+    "peak_dbfs": -13.98,
+    "rms_dbfs": -26.84
+  },
+  {
+    "name": "save",
+    "seconds": 0.85,
+    "peak_dbfs": -10.46,
+    "rms_dbfs": -23.69
+  },
+  {
+    "name": "login",
+    "seconds": 1.25,
+    "peak_dbfs": -8.87,
+    "rms_dbfs": -22.51
+  },
+  {
+    "name": "logout",
+    "seconds": 0.9,
+    "peak_dbfs": -11.06,
+    "rms_dbfs": -25.21
+  },
+  {
+    "name": "performance",
+    "seconds": 1.62,
+    "peak_dbfs": -7.96,
+    "rms_dbfs": -21.52
+  },
+  {
+    "name": "ready",
+    "seconds": 0.57,
+    "peak_dbfs": -13.15,
+    "rms_dbfs": -26.76
+  },
+  {
+    "name": "stage-start",
+    "seconds": 0.72,
+    "peak_dbfs": -9.37,
+    "rms_dbfs": -23.54
+  },
+  {
+    "name": "key-0",
+    "seconds": 0.09,
+    "peak_dbfs": -25.19,
+    "rms_dbfs": -35.84
+  },
+  {
+    "name": "key-1",
+    "seconds": 0.09,
+    "peak_dbfs": -25.19,
+    "rms_dbfs": -35.62
+  },
+  {
+    "name": "key-2",
+    "seconds": 0.09,
+    "peak_dbfs": -25.19,
+    "rms_dbfs": -36.1
+  },
+  {
+    "name": "key-3",
+    "seconds": 0.09,
+    "peak_dbfs": -25.19,
+    "rms_dbfs": -36.49
+  },
+  {
+    "name": "key-4",
+    "seconds": 0.09,
+    "peak_dbfs": -25.19,
+    "rms_dbfs": -37.19
+  },
+  {
+    "name": "key-5",
+    "seconds": 0.09,
+    "peak_dbfs": -25.19,
+    "rms_dbfs": -37.06
+  }
+]

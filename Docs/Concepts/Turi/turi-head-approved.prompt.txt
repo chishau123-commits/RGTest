@@ -1,0 +1,5 @@
+Tool: built-in image_gen
+Approved source: codex-clipboard-45934ce9-cb47-492f-b66e-873fe7823719.png
+Installed asset: Assets/RhythmDemo/Resources/Characters/Turi/turi-head-neutral.png
+
+Perform exactly ONE geometric change to the supplied approved pixel-art portrait: HORIZONTALLY MIRROR / FLIP the entire image left-to-right. The large headphone earcup currently on the viewer's RIGHT must end up on the viewer's LEFT, and the face must face viewer's RIGHT. This is the FINAL approved artwork: do not redraw, reinterpret, beautify, simplify, change expression, change color, change shading, alter clothing, alter pixels, crop, rotate vertically, resize, or add anything. Preserve all existing features, original pixel-art detail, dimensions and transparent background. Only a horizontal mirror transformation of the whole existing image.
